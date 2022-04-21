@@ -1,22 +1,31 @@
 #include "skiplist.h"
-#include "lockfree_c.h"
+#include <atomic>
 #ifndef LOCK_FREE_H
 #define LOCK_FREE_H
+
+template<typename T> 
+class LockFreeNode{
+    public:
+    volatile std::atomic<LockFreeNode *>*_next;
+    volatile std::atomic<T *>_value;
+    int _key;
+    int _top_level;
+    volatile std::atomic<int> _refcount;
+    LockFreeNode(int key, T *value, int top_level);
+    ~LockFreeNode();
+};
 
 template <typename T>
 class LockFreeList : public SkipList<T> {
     private:
-    list_t *_list;
+    LockFreeNode<T> *_leftmost;
+    void search(int key, LockFreeNode<T> **left_list, LockFreeNode<T> **right_list);
 
     public:
-    LockFreeList(int max_level, double p) : SkipList<T>(max_level, p) {
-        _list = list_init(p);
-    }
-    ~LockFreeList() {
-        list_free(_list);
-    }
-    bool insert(int key, T *value) { return list_insert(_list, key, static_cast<void *>(value)); }
-    T *remove(int key) { return static_cast<T *>(list_remove(key)); }
-    T *lookup(int key) { return static_cast<T *>(list_lookup(key)); }
+    LockFreeList(int max_level, double p);
+    ~LockFreeList();
+    bool insert(int key, T *value);
+    T *remove(int key);
+    T *lookup(int key);
 };
 #endif
