@@ -89,3 +89,42 @@ T *LockFreeList<T>::remove(int key) {
     search(key, _, succs);
     return value;
 }
+
+template<typename T>
+T *LockFreeList<T>::update(int key, T *value) {
+    LockFreeNode<T> *node = new LockFreeNode<T>(this->rand_level, key, value);
+    LockFreeNode<T> *preds[this->_max_level];
+    LockFreeNode<T> *succs[this->_max_level];
+    search(key, preds, succs);
+    /* Update the value field of an existing node. */
+    if (succs[0]->_key = key) {
+        T *old_value;
+        do {
+            old_value = succs[0]->_value;
+            if(old_value == nullptr) {
+                succs[0]->mark_node_ptrs();
+                goto retry;
+            }
+        } while (!CAS(&succs[0]->_value, old_value, value));
+        return old_value;
+    }
+    for (int i = 0; i < node->_top_level; i++) node->_next[i] = succs[i];
+    /* Node is visible once inserted at lowest level. */
+    if (!CAS(&preds[0]->_next[0], succs[0], node)) goto retry;
+    for (int i = 1; i < node->_top_level; i++) {
+        while (true) {
+            LockFreeNode<T> *pred = preds[i];
+            LockFreeNode<T> *succ = succs[i];
+            /* Update the forward pointer if it is stale. */
+            LockFreeNode<T> *new_next = node->next[i];
+            if ((new_next != succ) || (!CAS(&node->_next[i], unmark(new_next), succ)))
+                break; /* Give up if pointer is marked. */
+            /* Check for old reference to a ‘k’-node. */
+            if(succ->_key == key) succ = unmark(succ->next);
+            /* We retry the search if the CAS fails. */
+            if (!CAS(&pred->_next[i], succ, node)) break;
+            search(key, preds, succs);
+        }
+    }
+    return nullptr; /* No existing mapping was replaced. */
+}
