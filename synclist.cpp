@@ -20,6 +20,7 @@ SyncList<T>::SyncList(int max_level, double p) : SkipList<T>(max_level, p) {
     Node<T> *rightmost = new Node<T>(INT_MAX, nullptr, this->_max_level);
     for(int i = 0; i < this->_max_level; i++) {
         _leftmost->_next[i] = rightmost;
+        rightmost->_next[i] = nullptr;
     }
 }
 
@@ -27,7 +28,7 @@ template <typename T>
 SyncList<T>::~SyncList() {
     Node<T> *curr = _leftmost;
     Node<T> *next = curr->_next[0];
-    while(next != NULL) {
+    while(next != nullptr) {
         delete curr;
         curr = next;
         next = next->_next[0];
@@ -42,13 +43,13 @@ bool SyncList<T>::insert(int key, T *value) {
     Node<T> *curr = _leftmost;
     Node<T> *updates[this->_max_level];
     for(int i = this->_max_level-1; i >= 0; i--) {
-        while(curr->_next[i] != NULL && curr->_next[i]->_key < key) {
+        while(curr->_next[i] != nullptr && curr->_next[i]->_key < key) {
             curr = curr->_next[i];
         }
         updates[i] = curr;
     }
     curr = curr->_next[0];
-    if(curr != NULL && key == curr->_key) {
+    if(curr != nullptr && key == curr->_key) {
         _lock.unlock();
         return false; // key is already in skip list
     }
@@ -69,7 +70,7 @@ T *SyncList<T>::remove(int key) {
     Node<T> *curr = _leftmost;
     Node<T> *updates[this->_max_level];
     for(int i = this->_max_level-1; i >= 0; i--) {
-        while(curr->_next[i] != NULL && curr->_next[i]->_key < key) {
+        while(curr->_next[i] != nullptr && curr->_next[i]->_key < key) {
             curr = curr->_next[i];
         }
         updates[i] = curr;
@@ -93,12 +94,12 @@ T *SyncList<T>::lookup(int key) {
     _lock.lock();
     Node<T> *curr = _leftmost;
     for(int i = this->_max_level-1; i >= 0; i--) {
-        while(curr->_next[i] != NULL && curr->_next[i]->_key < key) {
+        while(curr->_next[i] != nullptr && curr->_next[i]->_key < key) {
             curr = curr->_next[i];
         }
     }
     curr = curr->_next[0];
-    T *ret = (curr != NULL && curr->_key == key) ? curr->_value : nullptr;
+    T *ret = (curr != nullptr && curr->_key == key) ? curr->_value : nullptr;
     _lock.unlock();
     return ret;
 }
@@ -109,7 +110,7 @@ void SyncList<T>::print() {
     for(int i = this->_max_level-1; i >= 0; i--) {
         Node<T> *curr = _leftmost;
         std::cout << "L" << i << ": ";
-        while(curr->_next[i] != NULL) {
+        while(curr->_next[i] != nullptr) {
             std::cout << curr->_key << ",";
             curr = curr->_next[i];
         }
