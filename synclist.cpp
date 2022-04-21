@@ -5,7 +5,7 @@
 
 template <typename T>
 Node<T>::Node(int key, T *value, int top_level) 
-        : _key(key), _value(value), _top_level(top_level) {
+        : _value(value), _key(key), _top_level(top_level) {
     _next = new Node *[top_level];
 }
 
@@ -97,7 +97,8 @@ T *SyncList<T>::lookup(int key) {
             curr = curr->_next[i];
         }
     }
-    T *ret = (curr != NULL && curr->_next[0]->_key == key) ? curr->_val : nullptr;
+    curr = curr->_next[0];
+    T *ret = (curr != NULL && curr->_key == key) ? curr->_value : nullptr;
     _lock.unlock();
     return ret;
 }
@@ -106,13 +107,13 @@ template<typename T>
 void SyncList<T>::print() {
     std::cout << "synchronized skip list: ";
     for(int i = this->_max_level-1; i >= 0; i--) {
-        Node<T> curr = _leftmost;
+        Node<T> *curr = _leftmost;
         std::cout << "L" << i << ": ";
-        while(curr->right[i] != NULL) {
-            std::cout << curr->key << ",";
-            curr = curr->right[i];
+        while(curr->_next[i] != NULL) {
+            std::cout << curr->_key << ",";
+            curr = curr->_next[i];
         }
         std::cout << "; ";
     }
+    std::cout << "\n";
 }
-
