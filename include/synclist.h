@@ -23,7 +23,7 @@ class SyncList : public SkipList<T> {
     public:
     SyncList(int max_level, double p);
     ~SyncList();
-    bool insert(int key, T *value);
+    T *update(int key, T *value);
     T *remove(int key);
     T *lookup(int key);
     void print();

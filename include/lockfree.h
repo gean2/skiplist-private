@@ -13,6 +13,7 @@ class LockFreeNode{
     volatile std::atomic<int> _refcount;
     LockFreeNode(int key, T *value, int top_level);
     ~LockFreeNode();
+    void mark_node_ptrs();
 };
 
 template <typename T>
@@ -24,7 +25,7 @@ class LockFreeList : public SkipList<T> {
     public:
     LockFreeList(int max_level, double p);
     ~LockFreeList();
-    bool insert(int key, T *value);
+    T *update(int key, T *value);
     T *remove(int key);
     T *lookup(int key);
 };

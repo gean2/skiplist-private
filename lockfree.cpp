@@ -4,18 +4,6 @@
 #define CAS(obj, expected, desired) atomic_compare_exchange_weak(obj, expected, desired)
 
 template<typename T>
-LockFreeNode<T>::LockFreeNode(int key, T *value, int top_level)
-    : _value(value), _key(key), _top_level(top_level), _refcount(0) {
-    _next = new LockFreeNode<T> *[top_level];
-}
-
-template<typename T>
-LockFreeNode<T>::~LockFreeNode() {
-    while(!CAS(&this->_refcount, 0, 0)) {} // only free memory after refcount is zero
-    delete[] _next;
-}
-
-template<typename T>
 bool is_marked(LockFreeNode<T> *p) {
     return (static_cast<long>(p) & 0x1L);
 }
@@ -28,6 +16,29 @@ LockFreeNode<T> *unmark(LockFreeNode<T> *p) {
 template<typename T>
 LockFreeNode<T> *mark(LockFreeNode<T> *p) {
     return (static_cast<long>(p) | 0x1L);
+}
+
+template<typename T>
+LockFreeNode<T>::LockFreeNode(int key, T *value, int top_level)
+    : _value(value), _key(key), _top_level(top_level), _refcount(0) {
+    _next = new LockFreeNode<T> *[top_level];
+}
+
+template<typename T>
+LockFreeNode<T>::~LockFreeNode() {
+    while(!CAS(&this->_refcount, 0, 0)) {} // only free memory after refcount is zero
+    delete[] _next;
+}
+
+template<typename T>
+void LockFreeNode<T>::mark_node_ptrs() {
+    LockFreeNode<T> *x_next;
+    for(int i = _top_level-1; i >= 0; i--) {
+        do {
+            x_next = _next[i];
+            if(is_marked(x_next)) break;
+        } while(!CAS(&_next[i], x_next, mark(x_next)));
+    }
 }
 
 template<typename T>
@@ -64,17 +75,6 @@ T *LockFreeList<T>::lookup(int key) {
 }
 
 template<typename T>
-void mark_node_ptrs(LockFreeNode<T> *x, int max_level) {
-    LockFreeNode<T> *x_next;
-    for(int i = max_level-1; i >= 0; i--) {
-        do {
-            x_next = x->next[i];
-            if(is_marked(x_next)) break;
-        } while(!CAS(&x->next[i], x_next, mark(x_next)));
-    }
-}
-
-template<typename T>
 T *LockFreeList<T>::remove(int key) {
     LockFreeNode<T> *_[this->_max_level];
     LockFreeNode<T> *succs[this->_max_level];
@@ -85,7 +85,7 @@ T *LockFreeList<T>::remove(int key) {
         value = succs[0]->value;
         if(value == nullptr) return nullptr;
     } while(!CAS(&succs[0]->value, value, nullptr));
-    mark_node_ptrs(succs[0], this->_max_level);
+    succs[0]->mark_node_ptrs();
     search(key, _, succs);
     return value;
 }

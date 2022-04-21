@@ -9,12 +9,12 @@ void add_test0(SkipList<int> *l) {
     int A[10] = {5,2,3,4,21,-2,33,12,6,7};
     int B[5] = {28, -4, 9, 10, 17};
     for(int i = 0; i < 10; i++) {
-        assert(l->insert(A[i], &A[i]));
-        assert(l->insert(A[i], &A[i]) == false);
+        assert(l->update(A[i], &A[i]) == nullptr);
+        assert(l->update(A[i], &A[i]) == &A[i]);
     }
     for(int i = 0; i < 5; i++) {
-        assert(l->insert(B[i], &B[i]));
-        assert(l->insert(B[i], &B[i]) == false); // cannot add an element twice
+        assert(l->update(B[i], &B[i]) == nullptr);
+        assert(l->update(B[i], &B[i]) == &B[i]); // cannot add an element twice
     }
     l->print();
     for(int i = 0; i < 10; i++) {

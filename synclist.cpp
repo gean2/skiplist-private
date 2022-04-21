@@ -6,7 +6,7 @@
 template <typename T>
 Node<T>::Node(int key, T *value, int top_level) 
         : _value(value), _key(key), _top_level(top_level) {
-    _next = new Node *[top_level];
+    _next = new Node<T> *[top_level];
 }
 
 template <typename T>
@@ -37,7 +37,7 @@ SyncList<T>::~SyncList() {
 }
 
 template <typename T>
-bool SyncList<T>::insert(int key, T *value) {
+T *SyncList<T>::update(int key, T *value) {
     assert(key != INT_MIN && key != INT_MAX);
     _lock.lock();
     Node<T> *curr = _leftmost;
@@ -50,8 +50,10 @@ bool SyncList<T>::insert(int key, T *value) {
     }
     curr = curr->_next[0];
     if(curr != nullptr && key == curr->_key) {
+        T *old_val = curr->_value;
+        curr->_value = value;
         _lock.unlock();
-        return false; // key is already in skip list
+        return old_val; // key is already in skip list
     }
     int level = SkipList<T>::rand_level();
     Node<T> *new_node = new Node<T>(key, value, level);
@@ -60,7 +62,7 @@ bool SyncList<T>::insert(int key, T *value) {
         updates[i]->_next[i] = new_node;
     }
     _lock.unlock();
-    return true;
+    return nullptr;
 }
 
 template <typename T>

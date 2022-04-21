@@ -31,7 +31,7 @@ class SkipList {
     // available to anyone
     public:
     SkipList(int max_level, double p) : distribution(0.0, 1.0), _p(p), _max_level(max_level) {} 
-    virtual bool insert(int key, T* value);
+    virtual T *update(int key, T* value);
     virtual T *remove(int key);
     virtual T *lookup(int key);
     virtual void print();
