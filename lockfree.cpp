@@ -75,8 +75,7 @@ void LockFreeList<T>::search(int key, LockFreeNode<T> **left_list, LockFreeNode<
     for(int i = this->_max_level - 1; i >= 0; i--) {
         left_next = left->_next[i].load();
         if(is_marked(left_next)) {
-            std::cout << "78 retry\n";
-            //goto retry;
+            goto retry;
         }
         /* Find unmarked node pair at this level. */
         for(right = left_next; ; right = right_next) {
@@ -90,9 +89,7 @@ void LockFreeList<T>::search(int key, LockFreeNode<T> **left_list, LockFreeNode<
             left = right; left_next = right_next;
         }
         /* Ensure left and right nodes are adjacent. */
-        if((left_next != right) || !CAS(left->_next[i], left_next, right)) {
-            //std::cout << left->_key << " " << left_next->_key << " " << right->_key << "\n";
-            //std::cout << "94 retry\n";
+        if((left_next != right) && !CAS(left->_next[i], left_next, right)) {
             goto retry;
         }
         left_list[i] = left; right_list[i] = right;
@@ -114,12 +111,16 @@ T *LockFreeList<T>::remove(int key) {
     search(key, _, succs);
     if(succs[0]->_key != key) return nullptr; // key is not in list
     T *value;
+    /* 1. Node is logically deleted when the value field is set to nullptr */
     do {
         value = succs[0]->_value.load();
         if(value == nullptr) return nullptr;
     } while(!CAS(succs[0]->_value, value, static_cast<T *>(nullptr)));
-    succs[0]->mark_node_ptrs();
+    /* 2. Mark forward pointers, then search will remove the node. */
+    LockFreeNode<T> *to_delete = succs[0];
+    to_delete->mark_node_ptrs();
     search(key, _, succs);
+    delete to_delete;
     return value;
 }
 
@@ -140,6 +141,7 @@ T *LockFreeList<T>::update(int key, T *value) {
                 goto retry;
             }
         } while (!CAS(succs[0]->_value, old_value, value));
+        delete node; // do not need this newly created node
         return old_value;
     }
     for (int i = 0; i < node->_top_level; i++) node->_next[i] = succs[i];
@@ -174,7 +176,7 @@ void LockFreeList<T>::print() {
             std::cout << curr->_key << ",";
             curr = curr->_next[i].load();
         }
-        std::cout << "; ";
+        std::cout << curr->_key << "; ";
     }
     std::cout << "\n";
 }
