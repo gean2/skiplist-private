@@ -27,9 +27,9 @@ class SyncList : public SkipList<T> {
     public:
     SyncList(int max_level, double p);
     ~SyncList();
-    T *update(int key, T *value);
-    T *remove(int key);
-    T *lookup(int key);
-    void print();
+    T *update(int key, T *value) override;
+    T *remove(int key) override;
+    T *lookup(int key) override;
+    void print() override;
 };
 #endif
