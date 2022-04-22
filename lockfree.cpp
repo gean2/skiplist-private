@@ -106,6 +106,7 @@ T *LockFreeList<T>::lookup(int key) {
 
 template<typename T>
 T *LockFreeList<T>::remove(int key) {
+    assert(key != INT_MIN && key != INT_MAX); // cannot remove min and max keys
     LockFreeNode<T> *_[this->_max_level];
     LockFreeNode<T> *succs[this->_max_level];
     search(key, _, succs);
@@ -126,13 +127,14 @@ T *LockFreeList<T>::remove(int key) {
 
 template<typename T>
 T *LockFreeList<T>::update(int key, T *value) {
-    assert(value != nullptr);
+    assert(value != nullptr); // cannot update with a nullptr (call remove instead)
+    assert(key != INT_MIN && key != INT_MAX); // cannot update min and max keys
     LockFreeNode<T> *node = new LockFreeNode<T>(key, value, this->rand_level());
     LockFreeNode<T> *preds[this->_max_level];
     LockFreeNode<T> *succs[this->_max_level];
     retry: search(key, preds, succs);
     /* Update the value field of an existing node. */
-    if (succs[0]->_key == key) {
+    if(succs[0]->_key == key) {
         T *old_value;
         do {
             old_value = succs[0]->_value.load();
@@ -144,22 +146,23 @@ T *LockFreeList<T>::update(int key, T *value) {
         delete node; // do not need this newly created node
         return old_value;
     }
-    for (int i = 0; i < node->_top_level; i++) node->_next[i] = succs[i];
+    for(int i = 0; i < node->_top_level; i++) node->_next[i] = succs[i];
     /* Node is visible once inserted at lowest level. */
-    if (!CAS(preds[0]->_next[0], succs[0], node)) goto retry;
-    for (int i = 1; i < node->_top_level; i++) {
+    if(!CAS(preds[0]->_next[0], succs[0], node)) goto retry;
+    for(int i = 1; i < node->_top_level; i++) {
         while (true) {
             LockFreeNode<T> *pred = preds[i];
             LockFreeNode<T> *succ = succs[i];
             /* Update the forward pointer if it is stale. */
             LockFreeNode<T> *new_next = node->_next[i].load();
             LockFreeNode<T> *unmarked = unmark(new_next);
-            if ((new_next != succ) || (!CAS(node->_next[i], unmarked, succ)))
+            if ((new_next != succ) && (!CAS(node->_next[i], unmarked, succ))) {
                 break; /* Give up if pointer is marked. */
+            }
             /* Check for old reference to a ‘k’-node. */
             if(succ->_key == key) succ = unmark(succ->_next[i].load());
             /* We retry the search if the CAS fails. */
-            if (!CAS(pred->_next[i], succ, node)) break;
+            if(CAS(pred->_next[i], succ, node)) break;
             search(key, preds, succs);
         }
     }
