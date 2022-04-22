@@ -1,3 +1,7 @@
+/**
+ * Synchronized list AKA coarse-grained locking implementation.
+ */
+
 #include "skiplist.h"
 #include <thread>
 #include <mutex>

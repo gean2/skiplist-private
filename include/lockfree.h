@@ -1,3 +1,6 @@
+/**
+ * Lock-free implementation of compare-and-swap
+ */
 #include "skiplist.h"
 #include <atomic>
 #ifndef LOCK_FREE_H
