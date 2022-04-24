@@ -100,7 +100,7 @@ template<typename T>
 T *LockFreeList<T>::lookup(int key) {
     LockFreeNode<T> *_[this->_max_level];
     LockFreeNode<T> *succs[this->_max_level];
-    search(key, _, succs);
+    search(key, _, succs); // TODO explain _ variable name
     return (succs[0]->_key == key) ? succs[0]->_value.load() : nullptr;
 }
 
