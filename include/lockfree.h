@@ -18,15 +18,23 @@ class LockFreeNode{
     void mark_node_ptrs();
 };
 
+template<typename T>
+class DeletionManager {
+    private:
+    T** _deleted;
+    std::atomic<int> _deletion_idx; // tracks the next index to point to a given variable
+    int _max_deletions; // tracks the maximum number of deletions that this can support
+    public:
+    DeletionManager(int max_deletions);
+    ~DeletionManager();
+    void add(T* item);
+};
+
 template <typename T>
 class LockFreeList : public SkipList<T> {
     private:
     LockFreeNode<T> *_leftmost; // header, etc.
-
-    // below data structures are used to manage 
-    LockFreeNode<T> **_deleted;
-    std::atomic<int> _deletion_idx;
-    int _max_deletion_idx;
+    DeletionManager<LockFreeNode<T> > *_manager;
 
     void search(int key, LockFreeNode<T> **left_list, LockFreeNode<T> **right_list);
 
