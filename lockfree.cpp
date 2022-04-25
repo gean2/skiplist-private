@@ -22,14 +22,12 @@ LockFreeNode<T> inline *mark(LockFreeNode<T> *p) {
 
 template<typename T>
 LockFreeNode<T>::LockFreeNode(int key, T *value, int top_level)
-    : _value(value), _key(key), _top_level(top_level), _refcount(0) {
+    : _value(value), _key(key), _top_level(top_level) {
     _next = new std::atomic<LockFreeNode<T> *>[top_level];
 }
 
 template<typename T>
 LockFreeNode<T>::~LockFreeNode() {
-    int i = 0;
-    while(!CAS(this->_refcount, i, 0)) {} // only free memory after refcount is zero
     delete[] _next;
 }
 
@@ -45,8 +43,10 @@ void LockFreeNode<T>::mark_node_ptrs() {
 }
 
 template <typename T>
-LockFreeList<T>::LockFreeList(int max_level, double p) : SkipList<T>(max_level, p) {
+LockFreeList<T>::LockFreeList(int max_level, double p, int max_deletions) 
+    : SkipList<T>(max_level, p), _deletion_idx(0), _max_deletion_idx(max_deletions-1) {
     _leftmost = new LockFreeNode<T>(INT_MIN, nullptr, max_level);
+    _deleted = new LockFreeNode<T> *[max_deletions];
     LockFreeNode<T> *rightmost = new LockFreeNode<T>(INT_MAX, nullptr, this->_max_level);
     for(int i = 0; i < this->_max_level; i++) {
         _leftmost->_next[i] = rightmost;
@@ -64,6 +64,10 @@ LockFreeList<T>::~LockFreeList() {
         next = next->_next[0].load();
     }
     delete curr;
+    for(int i = 0; i < _deletion_idx; i++) {
+        delete _deleted[i];
+    }
+    delete[] _deleted;
 }
 
 template<typename T>
@@ -121,7 +125,10 @@ T *LockFreeList<T>::remove(int key) {
     LockFreeNode<T> *to_delete = succs[0];
     to_delete->mark_node_ptrs();
     search(key, _, succs);
-    delete to_delete;
+    // "delete" node by keeping a reference to it in an array
+    int idx = atomic_fetch_add(&_deletion_idx, 1);
+    assert(idx <= _max_deletion_idx);
+    _deleted[idx] = to_delete;
     return value;
 }
 
