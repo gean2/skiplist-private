@@ -116,7 +116,7 @@ void SyncList<T>::print() {
             std::cout << curr->_key << ",";
             curr = curr->_next[i];
         }
-        std::cout << "; ";
+        std::cout << curr->_key << "; ";
     }
     std::cout << "\n";
 }
