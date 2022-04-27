@@ -1,8 +1,8 @@
 #include "include/skiplist.h"
-//#include "include/synclist.h" // TODO: correct declaration generates linker errors -> why?
-//#include "include/lockfree.h"
-#include "synclist.cpp" // TODO: WRONG RIGHT NOW
-#include "lockfree.cpp"
+#include "include/synclist.h" // TODO: correct declaration generates linker errors -> why?
+#include "include/lockfree.h"
+//#include "synclist.cpp" // TODO: WRONG RIGHT NOW
+//#include "lockfree.cpp"
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -10,7 +10,7 @@
 #include <omp.h>
 
 #define ARRAY_LENGTH 10000000
-#define DELETION_RATIO 10
+#define DELETION_RATIO 2
 
 void add_test0(SkipList<int> *l) {
     int A[10] = {5,2,3,4,21,-2,33,12,6,7};
@@ -46,19 +46,6 @@ void add_test0(SkipList<int> *l) {
     std::cout << "Passed add_test0\n";
 }
 
-void generateInitial1(int *l1) {
-    std::set<int> s1;
-    while(s1.size() < ARRAY_LENGTH) {
-        int val = (rand() % 1000000000) - 500000000;
-        s1.insert(val);
-    }
-    int i = 0;
-    for(std::set<int>::iterator itr = s1.begin(); itr != s1.end(); itr++) {
-        l1[i] = *itr;
-        i += 1;
-    }
-}
-
 void generateInitial2(int *l1) {
     auto rng = std::default_random_engine {};
     std::vector<int> v;
@@ -71,6 +58,7 @@ void generateInitial2(int *l1) {
         l1[i] = val;
         i++;
     }
+    std::cout << "Done generating inputs\n";
 }
 
 void add_test1(SkipList<int> *l) {
@@ -81,7 +69,6 @@ void add_test1(SkipList<int> *l) {
 
     int *l1 = new int[ARRAY_LENGTH];
     generateInitial2(l1);
-    std::cout << "Done generating inputs\n";
     auto init_start = Clock::now();
     #pragma omp parallel for default(shared) schedule(dynamic) num_threads(8)
     for(int i = 0; i < ARRAY_LENGTH; i++) {
@@ -101,13 +88,54 @@ void add_test1(SkipList<int> *l) {
     delete[] l1;
 }
 
+void add_test2(SkipList<int> *l) {
+    using namespace std::chrono;
+    double init_time = 0;
+    typedef std::chrono::high_resolution_clock Clock;
+    typedef std::chrono::duration<double> dsec;
+    int *A = new int[ARRAY_LENGTH];
+    int dummy = 2;
+    generateInitial2(A);
+    auto init_start = Clock::now();
+    #pragma omp parallel for default(shared) schedule(dynamic)
+    for(int i = 0; i < ARRAY_LENGTH * 2; i++) {
+        if(i < ARRAY_LENGTH) {
+            int *res = l->update(A[i], &A[i]);
+            assert(res == &dummy || res == nullptr);
+        } else {
+            int idx = i % ARRAY_LENGTH;
+            int *res;
+            if(i % DELETION_RATIO) {
+                res = l->update(A[idx], &dummy);
+            }
+            else {
+                res = l->remove(A[idx]);
+            }
+            //if(res != nullptr && res != &A[idx]) std::cout << *res << " \n";
+            assert(res == &A[idx] || res == nullptr);
+        }
+    }
+    #pragma omp parallel for default(shared) schedule(dynamic)
+    for(int i = 0; i < ARRAY_LENGTH; i++) {
+        int *res = l->lookup(A[i]);
+        if(i % DELETION_RATIO) {
+            assert(res == &dummy || res == &A[i]);
+        } else {
+            assert(res == &A[i] || res == nullptr); 
+        }
+    }
+    init_time += duration_cast<dsec>(Clock::now() - init_start).count();
+    std::cout << "Passed add_test2 for " << init_time << " seconds.\n";
+    delete[] A;
+}
+
 int main() {
     SyncList<int>l1(20, 0.5);
     //add_test0(&l1);
     //LockFreeList<int> l2(4, 0.5, 5);
     //add_test0(&l2);
-    add_test1(&l1);
+    //add_test1(&l1);
     LockFreeList<int> l3(20, 0.5, ARRAY_LENGTH/DELETION_RATIO);
-    add_test1(&l3);
+    add_test2(&l1);
     return 0;
 }
