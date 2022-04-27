@@ -1,8 +1,5 @@
-#include "include/skiplist.h"
-#include "include/synclist.h" // TODO: correct declaration generates linker errors -> why?
-#include "include/lockfree.h"
-//#include "synclist.cpp" // TODO: WRONG RIGHT NOW
-//#include "lockfree.cpp"
+#include "include/synclist.hpp"
+#include "include/lockfree.hpp"
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -130,12 +127,12 @@ void add_test2(SkipList<int> *l) {
 }
 
 int main() {
-    SyncList<int>l1(20, 0.5);
-    //add_test0(&l1);
+    SyncList<int>l1(4, 0.5);
+    add_test0(&l1);
     //LockFreeList<int> l2(4, 0.5, 5);
     //add_test0(&l2);
     //add_test1(&l1);
     LockFreeList<int> l3(20, 0.5, ARRAY_LENGTH/DELETION_RATIO);
-    add_test2(&l1);
+    add_test2(&l3);
     return 0;
 }
