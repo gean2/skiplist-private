@@ -52,32 +52,6 @@ static LockFreeNode<T> inline *mark(LockFreeNode<T> *p) {
     return reinterpret_cast<LockFreeNode<T> *>(reinterpret_cast<long>(p) | 0x1L);
 }
 
-template<typename T>
-class DeletionManager {
-    private:
-    T** _deleted;
-    std::atomic<int> _deletion_idx; // tracks the next index to point to a given variable
-    int _max_deletions; // tracks the maximum number of deletions that this can support
-    public:
-
-    DeletionManager(int max_deletions) 
-            : _deletion_idx(0), _max_deletions(max_deletions) {
-        _deleted = new T *[max_deletions];
-    }
-
-    ~DeletionManager() {
-        for(int i = 0; i < _deletion_idx; i++) {
-            delete _deleted[i];
-        }
-        delete[] _deleted;
-    }
-    void add(T* item) {
-        int idx = atomic_fetch_add(&_deletion_idx, 1);
-        assert(idx < _max_deletions);
-        _deleted[idx] = item;
-    }
-};
-
 template <typename T>
 class LockFreeList : public SkipList<T> {
     private:
@@ -224,6 +198,15 @@ class LockFreeList : public SkipList<T> {
             std::cout << curr->_key << "; ";
         }
         std::cout << "\n";
+    }
+
+    /** 
+     * Thread unsafe method to be called when threads have finished reading,
+     * writing, etc. to deleted nodes, in order to free the memory associated
+     * with deleted nodes.
+     */
+    void clear() {
+        _manager->clear();
     }
 };
 #endif

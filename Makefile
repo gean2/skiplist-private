@@ -10,7 +10,7 @@ all: $(EXECUTABLE)
 ARCH=$(shell uname | sed -e 's/-.*//g')
 OBJDIR=objs
 CXX=g++ -m64
-CXXFLAGS=-O3 -Wall -g -std=c++11
+CXXFLAGS=-O3 -Wall -g -std=c++11 -fopenmp
 HOSTNAME=$(shell hostname)
 
 CC = gcc
@@ -22,7 +22,7 @@ FRAMEWORKS :=
 LDLIBS  := $(addprefix -l, $(LIBS))
 LDFRAMEWORKS := $(addprefix -framework , $(FRAMEWORKS))
 
-OBJS= $(OBJDIR)/synclist.o  $(OBJDIR)/test.o 
+OBJS= $(OBJDIR)/test.o 
 
 .PHONY: dirs clean
 

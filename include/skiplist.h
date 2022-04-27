@@ -1,6 +1,62 @@
 #include <random>
+#include <atomic>
+#include <assert.h>
 #ifndef SKIPLIST_H
 #define SKIPLIST_H
+
+/** 
+ * Extremely simple class that keeps track of deleted instances of user-defined
+ * classes. This has a thread-safe, lock-free method to add to the tracked 
+ * deleted nodes, and a thread-unsafe method to free the memory associated with
+ * all tracked deleted items. The DeletionManager can be deleted to free all 
+ * memory associated with it (this is understandably, not thread-safe).  
+*/
+template<typename T>
+class DeletionManager {
+    private:
+    T** _deleted;
+    std::atomic<int> _deletion_idx; // tracks the next index to point to a given variable
+    int _max_deletions; // tracks the maximum number of deletions that this can support
+    public:
+
+    /**
+     * Instantiate a deletion manager with the maximum number of deletions it
+     * can support before it needs to be cleared. 
+     */
+    DeletionManager(int max_deletions) 
+            : _deletion_idx(0), _max_deletions(max_deletions) {
+        _deleted = new T *[max_deletions];
+    }
+
+    /** 
+     * Thread-unsafe method to clear memory associated with the deletion
+     * manager. 
+     */
+    void clear() {
+        for(int i = 0; i < _deletion_idx; i++) {
+            delete _deleted[i];
+        }
+        _deletion_idx = 0;
+    }
+
+    /** 
+     * Thread-unsafe method to delete the deletion manager. 
+     */
+    ~DeletionManager() {
+        clear();
+        delete[] _deleted;
+    }
+
+    /**
+     * Thread-safe operation to add an item to be tracked by the deletion
+     * manager.
+     */
+    void add(T* item) {
+        int idx = atomic_fetch_add(&_deletion_idx, 1);
+        assert(idx < _max_deletions);
+        _deleted[idx] = item;
+    }
+};
 
 /**
  * This is a header file for skip lists that support unique int keys and
