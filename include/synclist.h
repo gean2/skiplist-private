@@ -23,6 +23,7 @@ class SyncList : public SkipList<T> {
     private:
     Node<T> *_leftmost;
     std::mutex _lock;
+    void unlock(FineList<T> *preds, int highest_locked);
 
     public:
     SyncList(int max_level, double p);
@@ -30,6 +31,7 @@ class SyncList : public SkipList<T> {
     T *update(int key, T *value) override;
     T *remove(int key) override;
     T *lookup(int key) override;
+    
     void print() override;
 };
 #endif

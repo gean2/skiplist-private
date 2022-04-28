@@ -1,7 +1,8 @@
 #include "include/skiplist.h"
 //#include "include/synclist.h" // TODO: correct declaration generates linker errors -> why?
-#include "synclist.cpp" // TODO: WRONG RIGHT NOW
-#include "lockfree.cpp"
+//#include "synclist.cpp" // TODO: WRONG RIGHT NOW
+//#include "lockfree.cpp"
+#include "finelock.cpp"
 #include <iostream>
 #include <assert.h>
 
@@ -40,9 +41,11 @@ void add_test0(SkipList<int> *l) {
 }
 
 int main() {
-    SyncList<int>l(4, 0.5);
+    //SyncList<int>l(4, 0.5);
+    //add_test0(&l);
+    //LockFreeList<int> l2(4, 0.5);
+    //add_test0(&l2);
+    FineList<int>l(4, 0.5);
     add_test0(&l);
-    LockFreeList<int> l2(4, 0.5);
-    add_test0(&l2);
     return 0;
 }

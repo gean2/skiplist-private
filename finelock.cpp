@@ -19,8 +19,6 @@ class FineNode {
 };
 */
 
-#define CAS(obj, expected, desired) atomic_compare_exchange_weak(&obj, &expected, desired)
-
 // TODO wait do I mark for fine grain?
 
 /**
@@ -53,14 +51,11 @@ FineNode<T> inline *mark(FineNode<T> *p) {
 template<typename T>
 FineNode<T>::FineNode(int key, T *value, int top_level)
     : _value(value), _key(key), _top_level(top_level) {
-    _refcount = 0;
-    _next = new std::atomic<FineNode<T> *>[top_level];
+    _next = new FineNode<T> *[top_level];
 }
 
 template<typename T>
 FineNode<T>::~FineNode() {
-    int i = 0;
-    while(!CAS(this->_refcount, i, 0)) {} // only free memory after refcount is zero
     delete[] _next;
 }
 
@@ -70,12 +65,17 @@ FineNode<T>::~FineNode() {
 */
 template<typename T>
 void FineNode<T>::mark_node_ptrs() {
-    FineNode<T> *x_next;
+    // FineNode<T> *x_next;
     for(int i = _top_level-1; i >= 0; i--) {
-        while(!CAS(_next[i], x_next, mark(x_next))) {
-            x_next = _next[i].load();
-            if(is_marked(x_next)) break;
-        }
+        _next[i] = mark(_next[i]);
+    }
+}
+
+template<typename T>
+void FineList<T>::unlock(FineNode<T> *preds, int highest_locked) {
+    FineNode<T> *curr;
+    for (int i = highest_locked; i >= 0; i--) {
+        std::cout << "TODO";
     }
 }
 
@@ -98,11 +98,11 @@ FineList<T>::FineList(int max_level, double p) : SkipList<T>(max_level, p) {
 template <typename T>
 FineList<T>::~FineList() {
     FineNode<T> *curr = this->_leftmost;
-    FineNode<T> *next = curr->_next[0].load();
+    FineNode<T> *next = curr->_next[0];
     while(next != nullptr) {
         delete curr;
         curr = next;
-        next = next->_next[0].load();
+        next = next->_next[0];
     }
     delete curr;
 }
@@ -116,37 +116,36 @@ FineList<T>::~FineList() {
 */
 template<typename T>
 int FineList<T>::search(int key, FineNode<T> **left_list, 
-                                 FineNode<T> **right_list) {
-    retry: FineNode<T> *left = this->_leftmost;
+                                 FineNode<T> **right_list, T**value) {
+    FineNode<T> *left = this->_leftmost;
     FineNode<T> *left_next;
     int lFound = -1;
     for(int level = this->_max_level - 1; level >= 0; level--) {
         // begin at most sparse, highway, level
-        left_next = left->_next[level].load(); // curr = pred->nexts[layer]
-        if(is_marked(left_next)) {
-            // oops, this level for this node is under construction
-            // try again (and hopefully then it's been taken care of)
-            goto retry;
-        }
+        left_next = left->_next[level]; // curr = pred->_next[layer]
+
         /* Find unmarked node pair at this level. */
-        while (left->key < key) {
+        while (left->_key < key) {
             left_next = left;
             left = left_next->_next[level]; // TODO comment
         }
         if (lFound == -1 && key == left->_key) {
             lFound = level;
+            *value = left->_value;
         }
         left_list[level] = left;
         right_list[level] = left_next;
     }
+    return lFound;
 }
 
 template<typename T>
 T *FineList<T>::lookup(int key) {
     FineNode<T> *_[this->_max_level];
     FineNode<T> *succs[this->_max_level];
-    search(key, _, succs);
-    return (succs[0]->_key == key) ? succs[0]->_value.load() : nullptr;
+    T* value;
+    search(key, _, succs, &value);
+    return (succs[0]->_key == key) ? succs[0]->_value : nullptr;
 }
 
 template<typename T>
@@ -158,8 +157,9 @@ bool FineList<T>::ok_to_delete(FineNode<T> *candidate, int lFound) {
 
 template<typename T>
 bool FineList<T>::contains(int v) {
-    FineNode<T> *preds[this->_max_height], *succs[this->_max_height];
-    int lFound = search(v, preds, succs);
+    FineNode<T> *preds[this->_max_level], *succs[this->_max_level];
+    T *val;
+    int lFound = search(v, preds, succs, &val);
     return (lFound != -1
             && succs[lFound]->_fully_linked
             && !succs[lFound]->_marked);
@@ -171,9 +171,10 @@ T *FineList<T>::remove(int key) {
     FineNode<T> *node_to_delete = nullptr;
     bool is_marked = false;
     int top_level = -1;
-    FineNode<T> *preds[this->_max_height], *succs[this->_max_height];
+    FineNode<T> *preds[this->_max_level], *succs[this->_max_level];
     while (true) {
-        int lFound = find_node(key, preds, succs);
+        T *ret = nullptr;
+        int lFound = search(key, preds, succs, &ret);
         if (is_marked || 
             (lFound != -1 && ok_to_delete(succs[lFound],lFound))
             ) {
@@ -184,37 +185,36 @@ T *FineList<T>::remove(int key) {
                 if (node_to_delete->_marked) {
                     // oops! another thread is removing this node
                     node_to_delete->_lock.unlock();
-                    return false; // could not delete
+                    return nullptr; // could not delete
                 }
                 node_to_delete->_marked = true;
                 is_marked = true;
             }
             int highest_locked = -1;
-            try {
-                FineNode<T> *pred, *succ, *prev_pred = nullptr;
-                bool valid = true;
-                for (int level = 0;
-                     valid && (level <= top_level);
-                     level++) {
-                    pred = preds[level];
-                    succ = succs[level];
-                    if (pred != prev_pred) {
-                        pred->_lock.lock();
-                        highest_locked = level;
-                        prev_pred = pred;
-                    }
-                    valid = !pred->_marked && pred->nexts[level] == succ;
+            FineNode<T> *pred, *succ, *prev_pred = nullptr;
+            bool valid = true;
+            for (int level = 0;
+                    valid && (level <= top_level);
+                    level++) {
+                pred = preds[level];
+                succ = succs[level];
+                if (pred != prev_pred) {
+                    pred->_lock.lock();
+                    highest_locked = level;
+                    prev_pred = pred;
                 }
-                if (!valid) continue;
-                for (int level = top_level; level >= 0; level--) {
-                    preds[level]->_next[level] = node_to_delete->_next[level];
-                }
-                auto ret = lFound->_value;
-                node_to_delete->_lock.unlock();
-                return ret;
-            } finally { // HOW TO REPLACE FINALLY?
-                unlock(preds, highest_locked);
+                valid = !pred->_marked && pred->_next[level] == succ;
             }
+            if (!valid) {
+                unlock(preds, highest_locked);
+                continue;
+            }
+            for (int level = top_level; level >= 0; level--) {
+                preds[level]->_next[level] = node_to_delete->_next[level];
+            }
+            node_to_delete->_lock.unlock();
+            unlock(preds, highest_locked);
+            return ret;
         }
         else return nullptr;
     }
@@ -225,12 +225,9 @@ T *FineList<T>::remove(int key) {
     // FineNode<T> *succs[this->_max_level];
     search(key, _, succs);
     if(succs[0]->_key != key) return nullptr; // key is not in list
-    T *value;
+    T *value = succs[0]->value;
     /* 1. Node is logically deleted when the value field is set to nullptr */
-    do {
-        value = succs[0]->_value.load();
-        if(value == nullptr) return nullptr;
-    } while(!CAS(succs[0]->_value, value, static_cast<T *>(nullptr)));
+    succs[0]->value = nullptr;
     /* 2. Mark forward pointers, then search will remove the node. */
     FineNode<T> *to_delete = succs[0];
     to_delete->mark_node_ptrs();
@@ -248,7 +245,7 @@ bool FineList<T>::add(int key, T *value) {
     FineNode<T> *node = new FineNode<T>(key, value, ran_level);
     FineNode<T> *preds[this->_max_level];
     FineNode<T> *succs[this->_max_level];
-    retry: search(key, preds, succs);
+    search(key, preds, succs);
     /* Update the value field of an existing node. */
     while (true) {
         int lFound = search(key, preds, succs);
@@ -258,11 +255,9 @@ bool FineList<T>::add(int key, T *value) {
                 while (!node_found->_fully_linked) {} // wait
                 return false;
             }
+            continue;
         }
-        continue;
-    }
-    int highest_locked = -1;
-    try {
+        int highest_locked = -1;
         FineNode<T> *pred, *succ, *prev_pred = nullptr;
         bool valid = true;
         for (int level = 0; valid && level <= ran_level; level++) {
@@ -275,22 +270,21 @@ bool FineList<T>::add(int key, T *value) {
                 prev_pred = pred;
             }
             valid = !pred->_marked && !succ->_marked
-                    && pred->nexts[level] == succ;
+                    && pred->_next[level] == succ;
         }
-        if (valid) {}
-        if (!valid) continue;
-        auto new_node = new FineNode<T> *(v, ran_level);
+        if (!valid) {
+            unlock(preds, highest_locked);
+            continue;
+        }
+        auto new_node = new FineNode<T> *(key, value, ran_level);
         for (int level = 0; level <= ran_level; level++) {
-            new_node->nexts[level] = succs[level];
-            preds[level]->nexts[level] = new_node;
+            new_node->_next[level] = succs[level];
+            preds[level]->_next[level] = new_node;
         }
         new_node->_fully_linked = true;
+        unlock(preds, highest_locked);
         return true;
     }
-    finally { 
-        unlock(preds, highest_locked);
-    }
-
 }
 
 template<typename T>
@@ -299,9 +293,9 @@ void FineList<T>::print() {
     for(int i = this->_max_level-1; i >= 0; i--) {
         FineNode<T> *curr = _leftmost;
         std::cout << "L" << i << ": ";
-        while(curr->_next[i].load() != nullptr) {
+        while(curr->_next[i] != nullptr) {
             std::cout << curr->_key << ",";
-            curr = curr->_next[i].load();
+            curr = curr->_next[i];
         }
         std::cout << curr->_key << "; ";
     }

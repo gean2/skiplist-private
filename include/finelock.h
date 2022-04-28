@@ -18,7 +18,6 @@ class FineNode {
     int _top_level;
     bool _fully_linked;
     bool _marked;
-    int _refcount;
     std::mutex _lock;
     FineNode(int key, T *value, int top_level);
     ~FineNode();
@@ -30,7 +29,7 @@ class FineList : public SkipList<T> {
     private:
     FineNode<T> *_leftmost;
     std::mutex _lock;
-    int search(int key, FineNode<T> **left_list, FineNode<T> **right_list);
+    int search(int key, FineNode<T> **left_list, FineNode<T> **right_list, T **value);
     public:
     FineList(int max_level, double p);
     ~FineList();
