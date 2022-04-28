@@ -133,5 +133,7 @@ class SyncList : public SkipList<T> {
         }
         std::cout << "\n";
     }
+
+    bool is_correct() { return true; }
 };
 #endif

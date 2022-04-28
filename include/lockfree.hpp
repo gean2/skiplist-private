@@ -205,8 +205,10 @@ class LockFreeList : public SkipList<T> {
      * writing, etc. to deleted nodes, in order to free the memory associated
      * with deleted nodes.
      */
-    void clear() {
+    void cleanup() {
         _manager->clear();
     }
+
+    bool is_correct() { return true; }
 };
 #endif

@@ -123,6 +123,6 @@ class SkipList {
     /**
      * Implemntation performs a check for correctness. 
      */
-    bool is_correct() { return true; } // to be overridden
+    virtual bool is_correct(); // to be overridden
 };
 #endif
