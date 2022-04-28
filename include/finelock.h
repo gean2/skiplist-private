@@ -18,9 +18,11 @@ class FineNode {
     int _top_level;
     bool _fully_linked;
     bool _marked;
-    Lock lock; // TODO what is this
+    int _refcount;
+    std::mutex _lock;
     FineNode(int key, T *value, int top_level);
     ~FineNode();
+    void mark_node_ptrs();
 };
 
 template <typename T>
@@ -33,10 +35,10 @@ class FineList : public SkipList<T> {
     FineList(int max_level, double p);
     ~FineList();
 
-    bool add(int key);
-    bool remove(int key);
+    bool add(int key, T *value);
+    // T *remove(int key);
     bool contains(int v);
-
+    bool ok_to_delete(FineNode<T> *candidate, int lFound);
 
     T *update(int key, T *value) override;
     T *remove(int key) override;

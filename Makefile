@@ -1,6 +1,6 @@
 # taken from assignment 2
 EXECUTABLE := test
-CC_FILES   := test.cpp synclist.cpp
+CC_FILES   := test.cpp finelock.cpp
 LOGS	   := logs
 
 all: $(EXECUTABLE)
@@ -22,7 +22,7 @@ FRAMEWORKS :=
 LDLIBS  := $(addprefix -l, $(LIBS))
 LDFRAMEWORKS := $(addprefix -framework , $(FRAMEWORKS))
 
-OBJS= $(OBJDIR)/synclist.o  $(OBJDIR)/test.o 
+OBJS= $(OBJDIR)/finelock.o  $(OBJDIR)/test.o 
 
 .PHONY: dirs clean
 

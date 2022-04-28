@@ -1,5 +1,5 @@
 #include "include/lockfree.h"
-#include <bits/stdc++.h>
+#include <limits.h>
 #include <atomic>
 #include <iostream>
 

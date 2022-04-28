@@ -1,7 +1,7 @@
 #include "include/synclist.h"
-#include <bits/stdc++.h>
+#include <limits.h>
 #include <iostream>
-#include <assert.h>
+#include <asrt.h>
 
 template <typename T>
 Node<T>::Node(int key, T *value, int top_level) 
