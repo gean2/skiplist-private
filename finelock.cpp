@@ -74,8 +74,9 @@ void FineNode<T>::mark_node_ptrs() {
 template<typename T>
 void FineList<T>::unlock(FineNode<T> *preds, int highest_locked) {
     FineNode<T> *curr;
-    for (int i = highest_locked; i >= 0; i--) {
-        std::cout << "TODO";
+    for (int level = 0; level <= highest_locked; level++) {
+        curr = preds[level];
+        curr->_lock.unlock();
     }
 }
 

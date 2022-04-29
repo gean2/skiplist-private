@@ -30,6 +30,7 @@ class FineList : public SkipList<T> {
     FineNode<T> *_leftmost;
     std::mutex _lock;
     int search(int key, FineNode<T> **left_list, FineNode<T> **right_list, T **value);
+    void unlock(FineNode<T> *preds, int highest_locked);
     public:
     FineList(int max_level, double p);
     ~FineList();
