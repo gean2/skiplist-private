@@ -1,5 +1,5 @@
 /**
- * fine-grained locking implementation, inspired by Herlily paper.
+ * Fine-grained locking implementation, inspired by Herlily paper.
  */
 
 #include "skiplist.h"
@@ -206,10 +206,10 @@ class FineList : public SkipList<T> {
     T *lookup(int key) override {
         FineNode<T> *_[this->_max_level];
         FineNode<T> *succs[this->_max_level];
-        int lfound = search(key, _, succs);
-        return (lfound != -1 
-                && succs[lfound]->_fully_linked 
-                && !succs[lfound]->_marked) 
+        int lFound = search(key, _, succs);
+        return (lFound != -1 
+                && succs[lFound]->_fully_linked 
+                && !succs[lFound]->_marked) 
                 ? succs[0]->_value : nullptr;
     }
 
