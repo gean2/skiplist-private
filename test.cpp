@@ -10,7 +10,7 @@
 #define ARRAY_LENGTH 100000000
 #define DELETION_RATIO 2
 using std::vector;
-
+#define VERBOSE false
 
 void add_test0(SkipList<int> *l) {
     int A[10] = {5,2,3,4,21,-2,33,12,6,7};
@@ -66,7 +66,30 @@ vector<int> generate_normal_keys(float mean, float var) {
     return v;
 }
 
-// void count_repeats()
+double count_repeats(vector<int> vec) {
+    // int repeat, total = 0;
+    if (VERBOSE) {
+        std::cout << "frequencies (k: count):\n";
+    }
+    vector<int> v(vec); // copy of vec
+    std::sort(v.begin(), v.end());
+    int last = v[0];
+    int last_i = 0;
+    int unique = 1;
+    for (int i = 1; i < ARRAY_LENGTH; i++) {
+        if (v[i] != last) {
+            if (VERBOSE) {
+                std::cout << "\t" << last << ": " << (i - last_i) << "\n";
+            }
+            last = v[i];
+            last_i = i;
+            unique++;
+        }
+    }
+    double unique_perc = (double)unique / (double)ARRAY_LENGTH;
+    double res = (double)1.0 - unique_perc;
+    return res;
+}
 
 void add_test1(SkipList<int> *l) {
     using namespace std::chrono;
@@ -158,7 +181,11 @@ void normal_test0(SkipList<int> *l) {
     typedef std::chrono::high_resolution_clock Clock;
     typedef std::chrono::duration<double> dsec;
     vector<int> A = generate_normal_keys(0, 100000);
-    vector<int> B = generate_ops(0.01, 0.01);
+    vector<int> B = generate_ops(.5, 0.01);
+    // first arg to generate_ops is likelihood of update, second is remove
+    // then lookup has all the rest
+    double repeat_perc = count_repeats(A);
+    std::cout << repeat_perc << " of keys are repeats\n";
     // probability .1 of updating, .1 of deleting, and .8 of lookup
     std::cout << "Done generating inputs\n";
     auto init_start = Clock::now();
@@ -184,7 +211,7 @@ int main() {
     //LockFreeList<int> l2(4, 0.5, 5);
     //add_test0(&l2);
     //add_test1(&l1);
-    FineList<int> l3(20, 0.5, ARRAY_LENGTH/DELETION_RATIO);
+    LockFreeList<int> l3(20, 0.5, ARRAY_LENGTH/DELETION_RATIO);
     normal_test0(&l3);
     return 0;
 }
