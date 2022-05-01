@@ -103,7 +103,7 @@ class LockFreeList : public SkipList<T> {
      * NOT THREAD-SAFE. To be called to destroy all memory associated with the
      * linked list (including deleted nodes that have not been freed yet)
      */
-    ~LockFreeList() {
+    ~LockFreeList() override {
         LockFreeNode<T> *curr = _leftmost;
         LockFreeNode<T> *next = curr->_next[0].load();
         while(next != nullptr) {

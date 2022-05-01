@@ -42,7 +42,7 @@ class SyncList : public SkipList<T> {
         }
     }
 
-    ~SyncList() {
+    ~SyncList() override {
         Node<T> *curr = _leftmost;
         Node<T> *next = curr->_next[0];
         while(next != nullptr) {

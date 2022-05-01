@@ -93,6 +93,7 @@ class SkipList {
      * directly.
      */
     SkipList(int max_level, double p) : distribution(0.0, 1.0), _p(p), _max_level(max_level) {}
+    virtual ~SkipList() = default;
 
     // available to anyone
     public:
@@ -101,28 +102,28 @@ class SkipList {
      * present. The old value is returned; if the key is not present, nullptr
      * is returned. The argument "value" cannot be equal to nullptr.
      */
-    virtual T *update(int key, T* value);
+    virtual T *update(int key, T* value) = 0;
     
     /**
      * Remove a key from the list, return the value associated with the key.
      * If the key is not present in the list, nullptr is returned. 
      */
-    virtual T *remove(int key);
+    virtual T *remove(int key) = 0;
     
     /**
      * Returns the value associated with a key. It returns nullptr if it is
      * not present.
      */
-    virtual T *lookup(int key);
+    virtual T *lookup(int key) = 0;
 
     /**
      * Prints the list (implemented by subclass).
      */
-    virtual void print();
+    virtual void print() = 0;
 
     /**
      * Implemntation performs a check for correctness. 
      */
-    virtual bool is_correct(); // to be overridden
+    virtual bool is_correct() = 0; // to be overridden
 };
 #endif

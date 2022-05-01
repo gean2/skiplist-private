@@ -41,7 +41,7 @@ static void unlock(FineNode<T> **preds, int highest_locked) {
 }
 
 template <typename T>
-class FineList : public SkipList<T> {
+class FineLockList : public SkipList<T> {
     private:
     FineNode<T> *_leftmost;
     DeletionManager<FineNode<T>> *_manager;
@@ -75,7 +75,7 @@ class FineList : public SkipList<T> {
     }
 
     public:
-    FineList(int max_level, double p, int max_deletions=1000) : SkipList<T>(max_level, p) {
+    FineLockList(int max_level, double p, int max_deletions=1000) : SkipList<T>(max_level, p) {
         _leftmost = new FineNode<T>(INT_MIN, nullptr, max_level);
         _manager = new DeletionManager<FineNode<T> >(max_deletions);
         FineNode<T> *rightmost = new FineNode<T>(INT_MAX, nullptr, this->_max_level);
@@ -84,7 +84,7 @@ class FineList : public SkipList<T> {
             rightmost->_next[i] = nullptr;
         }
     }
-    ~FineList() {
+    ~FineLockList() override {
         FineNode<T> *curr = _leftmost;
         FineNode<T> *next = curr->_next[0];
         while(next != nullptr) {
@@ -108,7 +108,7 @@ class FineList : public SkipList<T> {
             if (lFound != -1) {
                 FineNode<T> *node_found = succs[lFound];
                 if (!node_found->_marked) {
-                    while (!node_found->_fully_linked) {} // wait
+                    while (!node_found->_fully_linked) { /*std::this_thread::yield();*/ } // wait
                     // update value 
                     node_found->_lock.lock();
                     T *old_value = node_found->_value;
@@ -135,6 +135,7 @@ class FineList : public SkipList<T> {
             }
             if (!valid) {
                 unlock(preds, highest_locked);
+                //std::this_thread::yield();
                 continue;
             }
             FineNode<T> *new_node = new FineNode<T>(key, value, top_level);
@@ -190,6 +191,7 @@ class FineList : public SkipList<T> {
                 }
                 if (!valid) {
                     unlock(preds, highest_locked);
+                    //std::this_thread::yield();
                     continue;
                 }
                 for (int level = top_level-1; level >= 0; level--) {
