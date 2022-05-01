@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH -p RM
+#SBATCH -t 00:20:00 
+
+# move to working directory
+# this job assumes:
+# - all input data is stored in this directory
+# - all output should be stored in this directory
+
+mkdir -p objs/
+g++ -m64 benchmark.cpp -O3 -Wall -g -std=c++11 -fopenmp -c -o objs/benchmark.o
+g++ -m64 -O3 -Wall -g -std=c++11 -fopenmp -o test objs/benchmark.o
+./benchmark 
