@@ -67,8 +67,7 @@ vector<int> generate_ops(int array_length, double update_prob, double removal_pr
     return res;
 } 
 
-template <class T>
-double time(T *l, std::vector<int> keys, std::vector<int> ops, 
+double time(SkipList<int> *l, std::vector<int> keys, std::vector<int> ops, 
             int array_length, int num_threads) {
     using namespace std::chrono;
     double compute_time = 0;
