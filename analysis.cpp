@@ -55,7 +55,7 @@ int main(int argc, const char *argv[]) {
 
     // compute inputs
     std::vector<int> keys = generate_normal_keys(array_length, variance);
-    std::vector<int> ops = generate_ops(array_length, update_prob, removal_prob);
+    std::vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
 
     int max_deletions = std::count(ops.begin(), ops.end(), 2);
     SkipList<int> *l;

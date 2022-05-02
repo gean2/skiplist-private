@@ -1,6 +1,6 @@
 # taken from assignment 2
 EXECUTABLE := benchmark
-FILES   := benchmark test analysis
+FILES   := benchmark test analysis ghc_benchmark
 LOGS	   := logs
 
 all: $(FILES)
@@ -46,6 +46,10 @@ test: dirs $(OBJS)
 
 analysis: dirs $(OBJS)
 		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/analysis.o $(OBJDIR)/utils.o  $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
+
+benchmark_ghc: dirs $(OBJS)
+		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/benchmark_ghc.o $(OBJDIR)/utils.o  $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
+
 
 $(OBJDIR)/%.o: %.cpp
 		$(CXX) $< $(CXXFLAGS) -c -o $@
