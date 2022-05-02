@@ -9,49 +9,49 @@
 #include <cmath>
 #include <random>
 
-#define ARRAY_LENGTH 100000000
 #define DELETION_RATIO 2
 using std::vector;
 #define VERBOSE false
-#define NAN_1 nanf("1")
+// #define NAN_1 nanf("1")
 
 const int Num_Distrs = 3;
 const int Num_Opers = 3;
 
-vector<int> generate_initial2() {
+vector<int> generate_shuffled_keys(int array_length) {
     auto rng = std::default_random_engine {};
-    vector<int> v(ARRAY_LENGTH, 0);
-    for(int i = 0; i < ARRAY_LENGTH; i++) {
+    vector<int> v(array_length, 0);
+    for(int i = 0; i < array_length; i++) {
         v[i] = i;
     }
     std::shuffle(std::begin(v), std::end(v), rng);
     return v;
 }
 
-vector<int> generate_uniform_keys(int start, int end) {
-    vector<int> v(ARRAY_LENGTH, 0);
+vector<int> generate_uniform_keys(int array_length, int start, int end) {
+    vector<int> v(array_length, 0);
     std::mt19937 gen{0};
     std::uniform_real_distribution<> d(start, end);
-    for(int i = 0; i < ARRAY_LENGTH; i++) {
+    for(int i = 0; i < array_length; i++) {
         v[i] = std::round(d(gen));
     }
     return v;
 }
 
-vector<int> generate_normal_keys(float mean, float var) {
-    vector<int> v(ARRAY_LENGTH, 0);
+vector<int> generate_normal_keys(int array_length, double mean, double var) {
+    vector<int> v(array_length, 0);
     std::mt19937 gen{0};
     std::normal_distribution<> d{mean, var};
-    for(int i = 0; i < ARRAY_LENGTH; i++) {
+    for(int i = 0; i < array_length; i++) {
         v[i] = std::round(d(gen));
     }
     return v;
 }
 
-vector<int> generate_bimodal_keys(float mean1, float var1,
-                                  float mean2, float var2,
-                                  float prob1) {
-    vector<int> v(ARRAY_LENGTH, 0);
+vector<int> generate_bimodal_keys(int array_length,
+                                  double mean1, double var1,
+                                  double mean2, double var2,
+                                  double prob1) {
+    vector<int> v(array_length, 0);
     std::mt19937 gen1{0};
     std::normal_distribution<> d1{mean1, var1};
     std::mt19937 gen2{0};
@@ -61,7 +61,7 @@ vector<int> generate_bimodal_keys(float mean1, float var1,
     std::mt19937 gen3{0};
     std::uniform_real_distribution<> unif(0, 1);
 
-    for (int i = 0; i < ARRAY_LENGTH; i++) {
+    for (int i = 0; i < array_length; i++) {
         if (unif(gen3) < prob1) {
             v[i] = std::round(d1(gen1));
         } else {
@@ -81,7 +81,7 @@ double count_repeats(vector<int> vec) {
     int last = v[0];
     int last_i = 0;
     int unique = 1;
-    for (int i = 1; i < ARRAY_LENGTH; i++) {
+    for (unsigned int i = 1; i < vec.size(); i++) {
         if (v[i] != last) {
             if (VERBOSE) {
                 std::cout << "\t" << last << ": " << (i - last_i) << "\n";
@@ -91,7 +91,7 @@ double count_repeats(vector<int> vec) {
             unique++;
         }
     }
-    double unique_perc = (double)unique / (double)ARRAY_LENGTH;
+    double unique_perc = (double)unique / (double)vec.size();
     double res = (double)1.0 - unique_perc;
     return res;
 }
@@ -132,20 +132,19 @@ void perform_test(SkipList<int> *l, std::vector<int> keys, std::vector<Oper> ops
     }
 }
 
-vector<int> generate_keys_(float mean, float var, Distr dist,
-                          float mean2=NAN_1, float var2=NAN_1,
-                          float prob1=0.6) {
+vector<int> generate_keys_(int array_length, double mean, double var, Distr dist,
+                          double mean2, double var2, double prob1) {
     // TODO seed?
     // vector<int> keys;
     if (dist == normal) {
-        return generate_normal_keys(mean, var);
+        return generate_normal_keys(array_length, mean, var);
     } else if (dist == bimodal) {
         if (isnan(mean2) || isnan(var2)) {
-            float mean1 = mean - (var * float(4));
-            mean2 = mean + (var * float(4));
-            return generate_bimodal_keys(mean1,var,mean2,var,prob1);
+            double mean1 = mean - (var * double(4));
+            mean2 = mean + (var * double(4));
+            return generate_bimodal_keys(array_length,mean1,var,mean2,var,prob1);
         } else {
-            return generate_bimodal_keys(mean,var,mean2,var2,prob1);
+            return generate_bimodal_keys(array_length,mean,var,mean2,var2,prob1);
         }
         
     } else {
@@ -156,14 +155,14 @@ vector<int> generate_keys_(float mean, float var, Distr dist,
             std::cout << "WARNING: Uniform called with close together ";
             std::cout << "U(" << start << "," << end << ")\n";
         }
-        return generate_uniform_keys(start,end);
+        return generate_uniform_keys(array_length,start,end);
     }
 }
 
-vector<int> generate_keys(float mean, float var, Distr dist,
-                          float mean2=NAN_1, float var2=NAN_1,
-                          float prob1=.6) {
-    vector<int> keys = generate_keys_(mean,var,dist,mean2,var2,prob1);
+vector<int> generate_keys(int array_length, double mean, double var, Distr dist,
+                          double mean2, double var2, double prob1) {
+    vector<int> keys = generate_keys_(array_length,mean,var,dist,
+                                                   mean2,var2,prob1);
     for (unsigned int i = 0; i < keys.size(); i++) {
         if (keys[i] == INT_MAX) {
             keys[i]--;

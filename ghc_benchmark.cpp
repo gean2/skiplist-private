@@ -1,7 +1,7 @@
 #include "include/lockfree.hpp"
 #include "include/synclist.hpp"
 #include "include/finelock.hpp"
-#include "include/test_utils.hpp"
+#include "include/utils.h"
 #include <cstdio>
 #include <cstdlib>
 #include <random>
@@ -181,11 +181,11 @@ int main(int argc, const char *argv[]) {
         if (DEBUG) cout << "generating keys with distribution " << dist << "\n";
         vector<int> keys;
         if (dist == uniform) {
-            keys = generate_keys(-1000,1000, dist);
+            keys = generate_keys(array_length,-1000,1000, dist);
         } else if (dist == normal) {
-            keys = generate_keys(0,10000, dist);
+            keys = generate_keys(array_length,0,10000, dist);
         } else if (dist == bimodal) {
-            keys = generate_keys(0,variance / 4, dist);
+            keys = generate_keys(array_length,0,variance / 4, dist);
         }
         if (DEBUG) cout << "performing run\n";
         string s = single_run(keys, ops, skip_prob, max_height, num_trials,

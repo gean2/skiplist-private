@@ -56,7 +56,7 @@ int main(int argc, const char *argv[]) {
     int variance = get_option_float("-v", 100000);
 
     // compute inputs
-    std::vector<int> keys = generate_normal_keys(array_length, variance);
+    std::vector<int> keys = generate_normal_keys(array_length, 0.0, variance);
     std::vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
 
     int max_deletions = std::count(ops.begin(), ops.end(), 2);
