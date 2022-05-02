@@ -1,9 +1,9 @@
 # taken from assignment 2
-EXECUTABLE := ghc_benchmark
-CC_FILES   := ghc_benchmark.cpp synclist.cpp
+EXECUTABLE := benchmark
+FILES   := benchmark test analysis
 LOGS	   := logs
 
-all: $(EXECUTABLE)
+all: $(FILES)
 
 ###########################################################
 
@@ -22,7 +22,7 @@ FRAMEWORKS :=
 LDLIBS  := $(addprefix -l, $(LIBS))
 LDFRAMEWORKS := $(addprefix -framework , $(FRAMEWORKS))
 
-OBJS= $(OBJDIR)/ghc_benchmark.o 
+OBJS= $(OBJDIR)/benchmark.o $(OBJDIR)/utils.o $(OBJDIR)/test.o $(OBJDIR)/analysis.o 
 
 .PHONY: dirs clean
 
@@ -32,15 +32,20 @@ dirs:
 		mkdir -p $(OBJDIR)/
 
 clean:
-		rm -rf $(OBJDIR) *~ $(EXECUTABLE) $(LOGS) *.ppm
+		rm -rf $(OBJDIR) *~ $(FILES) $(LOGS) *.ppm
 
 export: $(EXFILES)
 	cp -p $(EXFILES) $(STARTER)
 
 
-$(EXECUTABLE): dirs $(OBJS)
-		$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
+benchmark: dirs $(OBJS)
+		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/benchmark.o $(OBJDIR)/utils.o $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
 
+test: dirs $(OBJS)
+		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/test.o  $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
+
+analysis: dirs $(OBJS)
+		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/analysis.o $(OBJDIR)/utils.o  $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
 
 $(OBJDIR)/%.o: %.cpp
 		$(CXX) $< $(CXXFLAGS) -c -o $@
