@@ -10,7 +10,7 @@
 #ifndef LOCK_FREE_H
 #define LOCK_FREE_H
 
-#define CAS(obj, expected, desired) atomic_compare_exchange_weak(&obj, &expected, desired)
+#define CAS(obj, expected, desired) atomic_compare_exchange_weak_explicit(&obj, &expected, desired, MEMORY_ORDER, MEMORY_ORDER)
 
 template<typename T> 
 class LockFreeNode{
@@ -30,7 +30,7 @@ class LockFreeNode{
         LockFreeNode<T> *x_next;
         for(int i = _top_level-1; i >= 0; i--) {
             do {
-                x_next = _next[i].load();
+                x_next = _next[i].load(MEMORY_ORDER);
                 if(is_marked(x_next)) break;
             } while(!CAS(_next[i], x_next, mark(x_next)));
         }
@@ -64,7 +64,7 @@ class LockFreeList : public SkipList<T> {
         LockFreeNode<T> *right;
         LockFreeNode<T> *right_next;
         for(int i = this->_max_level - 1; i >= 0; i--) {
-            left_next = left->_next[i].load();
+            left_next = left->_next[i].load(MEMORY_ORDER);
             if(is_marked(left_next)) {
                 goto retry;
             }
@@ -72,7 +72,7 @@ class LockFreeList : public SkipList<T> {
             for(right = left_next; ; right = right_next) {
                 /* Skip a sequence of marked nodes. */
                 while(true) {
-                    right_next = right->_next[i].load();
+                    right_next = right->_next[i].load(MEMORY_ORDER);
                     if(!is_marked(right_next)) break;
                     right = unmark(right_next);
                 }
@@ -105,11 +105,11 @@ class LockFreeList : public SkipList<T> {
      */
     ~LockFreeList() override {
         LockFreeNode<T> *curr = _leftmost;
-        LockFreeNode<T> *next = curr->_next[0].load();
+        LockFreeNode<T> *next = curr->_next[0].load(MEMORY_ORDER);
         while(next != nullptr) {
             delete curr;
             curr = next;
-            next = next->_next[0].load();
+            next = next->_next[0].load(MEMORY_ORDER);
         }
         delete curr;
         delete _manager;
@@ -126,7 +126,7 @@ class LockFreeList : public SkipList<T> {
         if(succs[0]->_key == key) {
             T *old_value;
             do {
-                old_value = succs[0]->_value.load();
+                old_value = succs[0]->_value.load(MEMORY_ORDER);
                 if(old_value == nullptr) {
                     succs[0]->mark_node_ptrs();
                     goto retry;
@@ -143,13 +143,13 @@ class LockFreeList : public SkipList<T> {
                 LockFreeNode<T> *pred = preds[i];
                 LockFreeNode<T> *succ = succs[i];
                 /* Update the forward pointer if it is stale. */
-                LockFreeNode<T> *new_next = node->_next[i].load();
+                LockFreeNode<T> *new_next = node->_next[i].load(MEMORY_ORDER);
                 LockFreeNode<T> *unmarked = unmark(new_next);
                 if ((new_next != succ) && (!CAS(node->_next[i], unmarked, succ))) {
                     break; /* Give up if pointer is marked. */
                 }
                 /* Check for old reference to a ‘k’-node. */
-                if(succ->_key == key) succ = unmark(succ->_next[i].load());
+                if(succ->_key == key) succ = unmark(succ->_next[i].load(MEMORY_ORDER));
                 /* We retry the search if the CAS fails. */
                 if(CAS(pred->_next[i], succ, node)) break;
                 search(key, preds, succs);
@@ -167,7 +167,7 @@ class LockFreeList : public SkipList<T> {
         T *value;
         /* 1. Node is logically deleted when the value field is set to nullptr */
         do {
-            value = succs[0]->_value.load();
+            value = succs[0]->_value.load(MEMORY_ORDER);
             if(value == nullptr) return nullptr;
         } while(!CAS(succs[0]->_value, value, static_cast<T *>(nullptr)));
         /* 2. Mark forward pointers, then search will remove the node. */
@@ -183,7 +183,7 @@ class LockFreeList : public SkipList<T> {
         LockFreeNode<T> *_[this->_max_level];
         LockFreeNode<T> *succs[this->_max_level];
         search(key, _, succs);
-        return (succs[0]->_key == key) ? succs[0]->_value.load() : nullptr;
+        return (succs[0]->_key == key) ? succs[0]->_value.load(MEMORY_ORDER) : nullptr;
     }
 
     void print() override {
@@ -191,9 +191,9 @@ class LockFreeList : public SkipList<T> {
         for(int i = this->_max_level-1; i >= 0; i--) {
             LockFreeNode<T> *curr = _leftmost;
             std::cout << "L" << i << ": ";
-            while(curr->_next[i].load() != nullptr) {
+            while(curr->_next[i].load(MEMORY_ORDER) != nullptr) {
                 std::cout << curr->_key << ",";
-                curr = curr->_next[i].load();
+                curr = curr->_next[i].load(MEMORY_ORDER);
             }
             std::cout << curr->_key << "; ";
         }

@@ -4,6 +4,7 @@
 #ifndef SKIPLIST_H
 #define SKIPLIST_H
 
+#define MEMORY_ORDER std::memory_order_relaxed
 /** 
  * Extremely simple class that keeps track of deleted instances of user-defined
  * classes. This has a thread-safe, lock-free method to add to the tracked 
@@ -52,7 +53,7 @@ class DeletionManager {
      * manager.
      */
     void add(T* item) {
-        int idx = atomic_fetch_add(&_deletion_idx, 1);
+        int idx = _deletion_idx.fetch_add(1, MEMORY_ORDER);
         assert(idx < _max_deletions);
         _deleted[idx] = item;
     }
@@ -93,10 +94,11 @@ class SkipList {
      * directly.
      */
     SkipList(int max_level, double p) : distribution(0.0, 1.0), _p(p), _max_level(max_level) {}
-    virtual ~SkipList() = default;
 
     // available to anyone
     public:
+    virtual ~SkipList() = default;
+
     /**
      * Update a mapping of key -> value, inserting the key if it is not already
      * present. The old value is returned; if the key is not present, nullptr
