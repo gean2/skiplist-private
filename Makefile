@@ -1,6 +1,6 @@
 # taken from assignment 2
-EXECUTABLE := test
-CC_FILES   := test.cpp synclist.cpp
+EXECUTABLE := ghc_benchmark
+CC_FILES   := ghc_benchmark.cpp synclist.cpp
 LOGS	   := logs
 
 all: $(EXECUTABLE)
@@ -22,7 +22,7 @@ FRAMEWORKS :=
 LDLIBS  := $(addprefix -l, $(LIBS))
 LDFRAMEWORKS := $(addprefix -framework , $(FRAMEWORKS))
 
-OBJS= $(OBJDIR)/test.o 
+OBJS= $(OBJDIR)/ghc_benchmark.o 
 
 .PHONY: dirs clean
 
