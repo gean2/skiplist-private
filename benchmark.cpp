@@ -1,17 +1,13 @@
 #include "include/lockfree.hpp"
 #include "include/synclist.hpp"
 #include "include/finelock.hpp"
+#include "include/utils.h"
 #include <cstdio>
 #include <cstdlib>
-#include <random>
-#include <omp.h>
-#include <assert.h>
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iostream>
-
-using std::vector;
 
 static int _argc;
 static const char **_argv;
@@ -38,60 +34,10 @@ float get_option_float(const char *option_name, float default_value) {
     return default_value;
 }
 
-vector<int> generate_normal_keys(int array_length, double var) {
-    vector<int> v(array_length, 0);
-    std::mt19937 gen{0};
-    std::normal_distribution<> d{0, var};
-    for(int i = 0; i < array_length; i++) {
-        v[i] = std::round(d(gen));
-    }
-    return v;
-}
-
-vector<int> generate_ops(int array_length, double update_prob, double removal_prob) {
-    std::mt19937 gen{0};
-    std::uniform_real_distribution<> dist(0, 1);
-    std::vector<int> res(array_length, 0);
-    for (int i = 0; i < array_length; i++) {
-        double g = dist(gen);
-        if (g < update_prob) {
-            res[i] = 0;
-        }
-        else if (g < update_prob + removal_prob) {
-            res[i] = 1;
-        }
-        else {
-            res[i] = 2;
-        }
-    }
-    return res;
-} 
-
-double time(SkipList<int> *l, std::vector<int> keys, std::vector<int> ops, 
-            int array_length, int num_threads) {
+int main(int argc, const char *argv[]) {
     using namespace std::chrono;
-    double compute_time = 0;
     typedef std::chrono::high_resolution_clock Clock;
     typedef std::chrono::duration<double> dsec;
-    auto compute_start = Clock::now();
-
-    #pragma omp parallel for default(shared) schedule(dynamic) num_threads(num_threads)
-    for(int i = 0; i < array_length; i++) {
-        int *val;
-        if(ops[i] == 0) {
-            val = l->update(keys[i], &keys[i]);
-        } else if(ops[i] == 1) {
-            val = l->remove(keys[i]);
-        } else {
-            val = l->lookup(keys[i]);
-        }
-        assert(val == nullptr || *val == keys[i]);
-    }
-    compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
-    return compute_time;
-}
-
-int main(int argc, const char *argv[]) {
 
     // Get command line arguments
     _argc = argc - 1;
@@ -100,6 +46,7 @@ int main(int argc, const char *argv[]) {
     double skip_prob = get_option_float("-p", 0.5f); // probability of increasing a level
     int max_height = get_option_int("-h", 20); // maximum height of skip list
 
+    bool no_sync = (bool) get_option_int("-ns", 0);
     int num_trials = get_option_int("-r", 5);
     int num_threads = get_option_int("-n", 8);
     int array_length = get_option_int("-a", 10000000);
@@ -119,32 +66,40 @@ int main(int argc, const char *argv[]) {
     double lock_free_time = 0;
     double fine_lock_time = 0;
 
-    SyncList<int> *sl = new SyncList<int>(max_height, skip_prob);
-    time(sl, keys, ops, array_length, num_threads);
-    delete sl;
-    for(int i = 0; i < num_trials; i++) {
-        sl = new SyncList<int>(max_height, skip_prob);
-        sync_time += time(sl, keys, ops, array_length, num_threads);
+    if(!no_sync) {
+        SyncList<int> *sl = new SyncList<int>(max_height, skip_prob);
+        perform_test(sl, keys, ops, array_length, num_threads);
         delete sl;
+        for(int i = 0; i < num_trials; i++) {
+            sl = new SyncList<int>(max_height, skip_prob);
+            auto compute_start = Clock::now();
+            perform_test(sl, keys, ops, array_length, num_threads);
+            sync_time += duration_cast<dsec>(Clock::now() - compute_start).count();
+            delete sl;
+        }
+        sync_time /= num_trials;
     }
-    sync_time /= num_trials;
 
     FineLockList<int> *fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
-    time(fl, keys, ops, array_length, num_threads);
+    perform_test(fl, keys, ops, array_length, num_threads);
     delete fl;
     for(int i = 0; i < num_trials; i++) {
         fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
-        fine_lock_time += time(fl, keys, ops, array_length, num_threads);
+        auto compute_start = Clock::now();
+        perform_test(fl, keys, ops, array_length, num_threads);
+        fine_lock_time += duration_cast<dsec>(Clock::now() - compute_start).count();
         delete fl;
     }
     fine_lock_time /= num_trials;
 
     LockFreeList<int> *lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
-    time(lf, keys, ops, array_length, num_threads);
+    perform_test(lf, keys, ops, array_length, num_threads);
     delete lf;
     for(int i = 0; i < num_trials; i++) {
         lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
-        lock_free_time += time(lf, keys, ops, array_length, num_threads);
+        auto compute_start = Clock::now();
+        perform_test(lf, keys, ops, array_length, num_threads);
+        lock_free_time += duration_cast<dsec>(Clock::now() - compute_start).count();
         delete lf;
     }
     lock_free_time /= num_trials;
