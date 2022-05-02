@@ -73,8 +73,8 @@ class SkipList {
 
     // methods accessible by this and subclasses
     protected:
-    double _p;
-    int _max_level;
+    const double _p;
+    const int _max_level;
 
     /**
      * Returns a random level less than or equal to the max level of the
@@ -92,11 +92,16 @@ class SkipList {
      * Abstract constructor for the SkipList. A SkipList should never be instantiated
      * directly.
      */
-    SkipList(int max_level, double p) : distribution(0.0, 1.0), _p(p), _max_level(max_level) {}
-    virtual ~SkipList() = default;
+    SkipList(int max_level, double p) 
+        : distribution(0.0, 1.0), _p(p), _max_level(max_level) { 
+            assert(max_level > 0 && p >= 0.0 && p <= 1.0);
+    }
 
     // available to anyone
     public:
+
+    virtual ~SkipList() = default;
+
     /**
      * Update a mapping of key -> value, inserting the key if it is not already
      * present. The old value is returned; if the key is not present, nullptr
