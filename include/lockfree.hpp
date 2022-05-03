@@ -15,8 +15,8 @@
 template<typename T> 
 class LockFreeNode{
     public:
-    volatile std::atomic<LockFreeNode *>*_next;
-    volatile std::atomic<T *>_value;
+    std::atomic<LockFreeNode *>*_next;
+    std::atomic<T *>_value;
     const int _key;
     const int _top_level;
     LockFreeNode(int key, T *value, int top_level) 
