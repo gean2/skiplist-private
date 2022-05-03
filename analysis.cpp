@@ -46,6 +46,7 @@ int main(int argc, const char *argv[]) {
     int max_height = get_option_int("-h", 20); // maximum height of skip list
 
     int type = get_option_int("-s", 0);
+    int dist = get_option_int("-dist", 0); // distribution; 0 is uniform distribution; 1 is normal distribution
     int num_threads = get_option_int("-n", 8);
     int array_length = get_option_int("-a", 10000000);
 
@@ -54,10 +55,18 @@ int main(int argc, const char *argv[]) {
     int variance = get_option_float("-v", 100000);
 
     // compute inputs
-    std::vector<int> keys = generate_normal_keys(array_length, variance);
-    std::vector<int> ops = generate_ops(array_length, update_prob, removal_prob);
+    std::vector<int> keys;
+    std::vector<int> initial_keys;
+    if(dist) {
+        keys = generate_normal_keys(array_length, variance);
+        initial_keys = generate_normal_keys(array_length/2, variance);
+    } else {
+        keys = generate_uniform_keys(array_length, variance);
+        initial_keys = generate_uniform_keys(array_length/2, variance);
+    } std::vector<int> ops = generate_ops(array_length, update_prob, removal_prob);
+    std::vector<int> initial_ops(array_length/2, 0); // add a bunch of elements initially
 
-    int max_deletions = std::count(ops.begin(), ops.end(), 2);
+    int max_deletions = std::count(ops.begin(), ops.end(), 1);
     SkipList<int> *l;
     if(type == FINELOCK) {
         std::cout << "Testing fine-grained locking skip list \n";
@@ -69,6 +78,7 @@ int main(int argc, const char *argv[]) {
         std::cout << "Testing coarse-grained locking skip list\n";
         l = new SyncList<int>(max_height, skip_prob);
     }
+    perform_test(l, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
     perform_test(l, keys, ops, array_length, num_threads);
     delete l;
 }
