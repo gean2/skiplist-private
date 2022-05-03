@@ -15,8 +15,8 @@ class Node {
     public:
     Node **_next;
     T *_value;
-    int _key;
-    int _top_level;
+    const int _key;
+    const int _top_level;
     Node(int key, T *value, int top_level)
             : _value(value), _key(key), _top_level(top_level) {
         _next = new Node<T> *[top_level];
