@@ -3,7 +3,9 @@
 #define TEST_HELPER_H
 using std::vector;
 
-vector<int> generate_normal_keys(int array_length, double var);
+vector<int> generate_uniform_keys(int array_length, int range);
+
+vector<int> generate_normal_keys(int array_length, int variance);
 
 vector<int> generate_ops(int array_length, double update_prob, double removal_prob);
 

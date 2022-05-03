@@ -3,10 +3,20 @@
 #include <omp.h>
 #include <random>
 
-vector<int> generate_normal_keys(int array_length, double var) {
+vector<int> generate_uniform_keys(int array_length, int range) {
     vector<int> v(array_length, 0);
     std::mt19937 gen{0};
-    std::normal_distribution<> d{0, var};
+    std::uniform_real_distribution<> d(-range/2, range/2);
+    for(int i = 0; i < array_length; i++) {
+        v[i] = std::round(d(gen));
+    }
+    return v;
+}
+
+vector<int> generate_normal_keys(int array_length, int variance) {
+    vector<int> v(array_length, 0);
+    std::mt19937 gen{0};
+    std::normal_distribution<> d{0, static_cast<double>(variance)};
     for(int i = 0; i < array_length; i++) {
         v[i] = std::round(d(gen));
     }
