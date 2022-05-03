@@ -1,5 +1,6 @@
 #include "include/utils.h"
 #include <assert.h>
+#include <iostream>
 #include <omp.h>
 #include <random>
 
@@ -42,11 +43,11 @@ vector<int> generate_ops(int array_length, double update_prob, double removal_pr
     return res;
 }
 
-void perform_test(SkipList<int> *l, std::vector<int> keys, std::vector<int> ops, 
+void perform_test(SkipList<int> *l, std::vector<int> &keys, std::vector<int> &ops, 
                     int array_length, int num_threads) {
     #pragma omp parallel for default(shared) schedule(dynamic) num_threads(num_threads)
     for(int i = 0; i < array_length; i++) {
-        int *val;
+        int *val = nullptr;
         if(ops[i] == 0) {
             val = l->update(keys[i], &keys[i]);
         } else if(ops[i] == 1) {
