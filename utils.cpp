@@ -173,3 +173,14 @@ vector<int> generate_keys(int array_length, double mean, double var, Distr dist,
     }
     return keys;
 }
+
+std::string to_string(Distr dist) {
+    if (dist == uniform) {
+        return "uniform";
+    } else if (dist == normal) {
+        return "normal";
+    } else {
+        assert(dist == bimodal);
+        return "bimodal";
+    }  
+}
