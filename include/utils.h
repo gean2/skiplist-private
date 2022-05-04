@@ -17,7 +17,7 @@ vector<Oper> generate_ops(int array_length, double update_prob, double removal_p
 
 double count_repeats(vector<int> vec);
 
-void perform_test(SkipList<int> *l, std::vector<int> keys, std::vector<Oper> ops, 
+void perform_test(SkipList<int> *l, std::vector<int> &keys, std::vector<Oper> &ops, 
                     int array_length, int num_threads);
 
 vector<int> generate_keys(int array_length, double mean, double var, Distr dist,

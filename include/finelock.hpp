@@ -12,12 +12,12 @@
 template <typename T>
 class FineNode {
     public:
-    FineNode **_next;
-    T *_value;
-    int _key;
-    int _top_level;
-    bool _fully_linked;
-    bool _marked;
+    FineNode * volatile *_next;
+    T* volatile _value;
+    const int _key;
+    const int _top_level;
+    volatile bool _fully_linked;
+    volatile bool _marked;
     std::mutex _lock;
     FineNode(int key, T *value, int top_level) 
         : _value(value), _key(key), _top_level(top_level), _fully_linked(false), _marked(false) {
@@ -173,6 +173,7 @@ class FineLockList : public SkipList<T> {
                     // continue to delete node
                     node_to_delete->_marked = true;
                     is_marked = true;
+                    node_to_delete->_lock.unlock();
                 }
                 int highest_locked = -1;
                 FineNode<T> *pred, *succ, *prev_pred = nullptr;
@@ -197,7 +198,6 @@ class FineLockList : public SkipList<T> {
                 for (int level = top_level-1; level >= 0; level--) {
                     preds[level]->_next[level] = node_to_delete->_next[level];
                 }
-                node_to_delete->_lock.unlock();
                 unlock(preds, highest_locked);
                 _manager->add(node_to_delete);
                 return value;

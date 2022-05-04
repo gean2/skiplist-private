@@ -4,15 +4,14 @@
 #include <random>
 #include <assert.h>
 #include <limits.h>
+#include <iostream>
 #include <omp.h>
 #include <math.h>
 #include <cmath>
 #include <random>
 
-#define DELETION_RATIO 2
 using std::vector;
 #define VERBOSE false
-// #define NAN_1 nanf("1")
 
 const int Num_Distrs = 3;
 const int Num_Opers = 3;
@@ -40,7 +39,7 @@ vector<int> generate_uniform_keys(int array_length, int start, int end) {
 vector<int> generate_normal_keys(int array_length, double mean, double var) {
     vector<int> v(array_length, 0);
     std::mt19937 gen{0};
-    std::normal_distribution<> d{mean, var};
+    std::normal_distribution<> d{mean, var}; // TODO from merge conflict static cast to double?
     for(int i = 0; i < array_length; i++) {
         v[i] = std::round(d(gen));
     }
@@ -116,7 +115,7 @@ vector<Oper> generate_ops(int array_length, double p_update, double p_remove) {
     return res;
 }
 
-void perform_test(SkipList<int> *l, std::vector<int> keys, std::vector<Oper> ops, 
+void perform_test(SkipList<int> *l, std::vector<int> &keys, std::vector<Oper> &ops, 
                     int array_length, int num_threads) {
     #pragma omp parallel for default(shared) schedule(dynamic) num_threads(num_threads)
     for(int i = 0; i < array_length; i++) {
