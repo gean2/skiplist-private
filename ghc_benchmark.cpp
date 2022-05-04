@@ -115,53 +115,6 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     return s;
 }
 
-string vary_impl_params(vector<int> &keys, vector<Oper> &ops,
-                  vector<double> skip_prob, int max_height, int num_trials,
-                  int num_threads, int array_length, double update_prob,
-                  double removal_prob, std::string dist_info) {
-    return "";
-}
-
-/*
-int main_diffopers(int argc, const char *argv[]) {
-
-    // Get command line arguments
-    _argc = argc - 1;
-    _argv = argv + 1;
-    // skip list probability
-    double skip_prob = get_option_float("-p", 0.5f); // probability of increasing a level
-    int max_height = get_option_int("-h", 20); // maximum height of skip list
-
-    int num_trials = get_option_int("-r", 5);
-    int num_threads = get_option_int("-n", 8);
-    int array_length = get_option_int("-a", 10000000);
-
-    // double update_prob = get_option_float("-i", 0.1f);
-    // double removal_prob = get_option_float("-d", 0.1f);
-    // int variance = get_option_float("-v", 100000);
-    vector<int> keys = generate_bimodal_keys(array_length, variance);
-    vector<Distr> dists = {normal, uniform, bimodal};
-    // for (int i = 0; i < Num_Distrs; )
-    
-    vector<int> ops = generate_ops(array_length, update_prob, removal_prob);
-    vector<vector<int>> keys(3);
-    
-    for (int i = 0; i < dists.size(); i++) {
-        Distr dist_update = dists[i];
-        keys[update_op] = 
-        for (int j = 0; j < dists.size(); j++) {
-            Distr dist_remove = dists[j];
-            for (int k = 0; k < dists.size(); k++) {
-                Distr dist_lookup = dists[j];
-
-            }
-        }
-    }
-
-
-}
-*/
-
 int main(int argc, const char *argv[]) {
     using std::ofstream;
 
@@ -176,7 +129,7 @@ int main(int argc, const char *argv[]) {
     int million = 1000000;
     int ten_million = 10000000;
     int ten_k = 10000;
-    int array_length = get_option_int("-a", ten_million);
+    int array_length = get_option_int("-a", million);
 
     double update_prob = get_option_float("-i", 0.1f);
     double removal_prob = get_option_float("-d", 0.1f);
@@ -185,11 +138,22 @@ int main(int argc, const char *argv[]) {
     string output_fn = "benchmark.csv";
     vector<int> thread_opts = {1,2,4,8};
     cout << std::setprecision(4) << std::fixed;
+    bool logging = (bool)get_option_int("--logging", 1);
     VERBOSE = (bool)get_option_int("--verbose", 0);
     if (VERBOSE) {
         cout << "running with verbose\n";
         cout << "update_prob=" << update_prob << ", removal_prob=" << removal_prob;
-        cout << ", variance=" << variance;
+        cout << ", variance=" << variance << ", array_length=";
+        string len_as_string = to_string(array_length);
+        for (int k = 0; k < len_as_string.size(); k++) {
+            // 8,000,000
+            cout << len_as_string[k];
+            if ((len_as_string.size() - k) % 3 == 1 && 
+                 (len_as_string.size() - k) > 1) {
+                cout << ".";
+            }
+        }
+        cout << "\n";
     } else {
         cout << "running without verbose\n";
     }
@@ -215,12 +179,15 @@ int main(int argc, const char *argv[]) {
     }
     
     if (VERBOSE) cout << csv_body;
+    string keys_csv = string("dist,dist_param1,dist_param2,array_length,key,op\n");
+    string keys_fn = "keys_logging.csv";
+
     vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
     if (VERBOSE) cout << "generated ops\n";
     for (unsigned int i = 0; i < dists.size(); i++) {
         Distr dist = dists[i];
         if (VERBOSE) {
-            cout << i << "/" << dists.size();
+            cout << "done with " << i << "/" << dists.size();
             cout << ", generating keys with distribution " << to_string_dist(dist)
                  << "\n";
         }
@@ -232,6 +199,7 @@ int main(int argc, const char *argv[]) {
             int end = 1000;
             keys = generate_keys(array_length,start,end,dist);
             dist_info = "uniform," + to_string(start) + "," + to_string(end);
+            
         } else if (dist == normal) {
             double mean = 0.0;
             keys = generate_keys(array_length,mean,variance,dist);
@@ -242,7 +210,12 @@ int main(int argc, const char *argv[]) {
             keys = generate_keys(array_length,mean,var, dist);
             dist_info = "bimodal," + to_string(mean) + "," + to_string(var);
         }
+        for (int j = 0; j < array_length; j++) {
+            keys_csv += dist_info + "," + to_string(array_length) + "," +
+                        to_string(keys[j]) + "," + to_string_op(ops[j]) + "\n";
+        }
         if (VERBOSE) cout << "\tperforming run\n";
+
         for (unsigned int t = 0; t < thread_opts.size(); t++) {
             int num_threads = thread_opts[t];
             string s = benchmark_from_inputs(keys, ops, skip_prob, max_height, num_trials,
@@ -256,8 +229,12 @@ int main(int argc, const char *argv[]) {
         
 
     }
-    ofstream ofile("benchmark.csv");
-    ofile << csv_body;
+    if (logging) {
+        ofstream key_file(keys_fn);
+        key_file << keys_csv;
+        ofstream ofile("benchmark.csv");
+        ofile << csv_body;
+    }
 
 
 }

@@ -24,5 +24,6 @@ vector<int> generate_keys(int array_length, double mean, double var, Distr dist,
                           double mean2=NAN_1, double var2=NAN_1, double prob1=.6);
 
 std::string to_string_dist(Distr dist);
+std::string to_string_op(Oper op);
 
 #endif

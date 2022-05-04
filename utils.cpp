@@ -184,3 +184,14 @@ std::string to_string_dist(Distr dist) {
         return "bimodal";
     }  
 }
+
+std::string to_string_op(Oper op) {
+    if (op == update_op) {
+        return "update_op";
+    } else if (op == remove_op) {
+        return "remove_op";
+    } else {
+        assert(op == lookup_op);
+        return "lookup_op";
+    }
+}
