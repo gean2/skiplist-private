@@ -11,6 +11,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <cmath>
 
 using std::vector;
 using std::string;
@@ -50,8 +51,8 @@ float get_option_float(const char *option_name, float default_value) {
 string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
                   vector<int> &initial_keys, vector<Oper> &initial_ops,
                   double skip_prob, int max_height, int num_trials,
-                  int num_threads, int array_length, double update_prob,
-                  double removal_prob, std::string dist_info) {
+                  int num_threads, int array_length, int init_length,
+                  double update_prob, double removal_prob, std::string dist_info) {
     using namespace std::chrono;
     typedef std::chrono::high_resolution_clock Clock;
     typedef std::chrono::duration<double> dsec;
@@ -67,12 +68,12 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     if (VERBOSE) cout << "running sync list...";
     if(!no_sync) {
         SyncList<int> *sl = new SyncList<int>(max_height, skip_prob);
-        perform_test(sl, initial_keys, initial_ops, array_length/2, num_threads);
+        perform_test(sl, initial_keys, initial_ops, init_length, num_threads);
         perform_test(sl, keys, ops, array_length, num_threads);
         delete sl;
         for(int i = 0; i < num_trials; i++) {
             sl = new SyncList<int>(max_height, skip_prob);
-            perform_test(sl, initial_keys, initial_ops, array_length/2, num_threads);
+            perform_test(sl, initial_keys, initial_ops, init_length, num_threads);
             auto compute_start = Clock::now();
             perform_test(sl, keys, ops, array_length, num_threads);
             sync_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -82,12 +83,12 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     }
     if (VERBOSE) cout << "done\n Running FineLockList...";
     FineLockList<int> *fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
-    perform_test(fl, initial_keys, initial_ops, array_length/2, num_threads);
+    perform_test(fl, initial_keys, initial_ops, init_length, num_threads);
     perform_test(fl, keys, ops, array_length, num_threads);
     delete fl;
     for(int i = 0; i < num_trials; i++) {
         fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
-        perform_test(fl, initial_keys, initial_ops, array_length/2, num_threads);
+        perform_test(fl, initial_keys, initial_ops, init_length, num_threads);
         auto compute_start = Clock::now();
         perform_test(fl, keys, ops, array_length, num_threads);
         fine_lock_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -97,13 +98,13 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     if (VERBOSE) cout << "done\n Running LockFreeList...";
     LockFreeList<int> *lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
     // warm up cache
-    perform_test(lf, initial_keys, initial_ops, array_length/2, num_threads);
+    perform_test(lf, initial_keys, initial_ops, init_length, num_threads);
     perform_test(lf, keys, ops, array_length, num_threads);
     delete lf;
     for(int i = 0; i < num_trials; i++) {
         lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
         // warm up data structure with inserts
-        perform_test(lf, initial_keys, initial_ops, array_length/2, num_threads);
+        perform_test(lf, initial_keys, initial_ops, init_length, num_threads);
         auto compute_start = Clock::now();
         perform_test(lf, keys, ops, array_length, num_threads);
         lock_free_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -139,6 +140,7 @@ int main(int argc, const char *argv[]) {
     int ten_million = 10000000;
     int ten_k = 10000;
     int array_length = get_option_int("-a", million);
+    int init_length = 2 * array_length;
 
     double update_prob = get_option_float("-i", 0.1f);
     double removal_prob = get_option_float("-d", 0.1f);
@@ -182,7 +184,7 @@ int main(int argc, const char *argv[]) {
              << (num_lines - 1) << " entries\n";
         output_fn = existing_csv;
     } else {
-        string csv_body = string("dist,dist_param1,dist_param2,sync_time,") +
+        csv_body = string("dist,dist_param1,dist_param2,sync_time,") +
                       string("fine_lock_time,lock_free_time,num_threads,") + 
                       string("update_prob,removal_prob,array_len\n");
     }
@@ -192,7 +194,7 @@ int main(int argc, const char *argv[]) {
     string keys_fn = "keys_logging.csv";
 
     vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
-    vector<Oper> initial_ops(array_length/2, update_op);
+    vector<Oper> initial_ops(init_length, update_op);
     // all updates at start to warm up data structure
     if (VERBOSE) cout << "generated ops\n";
     for (unsigned int i = 0; i < dists.size(); i++) {
@@ -206,24 +208,28 @@ int main(int argc, const char *argv[]) {
         vector<int> initial_keys;
         string dist_info;
         double var = variance;
+        int end_normal = std::sqrt(var) * 2;
+        int end_bimodal = std::sqrt(var) * 2;
         if (dist == uniform) {
             int start = -1000;
             int end = 1000;
             keys = generate_keys(array_length,start,end,dist);
-            initial_keys = generate_keys(array_length/2,start,end,dist);
-            dist_info = "uniform," + to_string(start) + "," + to_string(end);
+            initial_keys = generate_keys(init_length,start,end,dist);
+            dist_info = "uniform(unif_init)," + to_string(start) + "," + to_string(end);
             
         } else if (dist == normal) {
             double mean = 0.0;
             keys = generate_keys(array_length,mean,variance,dist);
-            initial_keys = generate_keys(array_length/2,mean,var,dist);
-            dist_info = "normal," + to_string(mean) + "," + to_string(var);
+            initial_keys = generate_keys(init_length,-1 * end_normal,
+                                         end_normal,uniform);
+            dist_info = "normal(unif_init)," + to_string(mean) + "," + to_string(var);
         } else if (dist == bimodal) {
             double mean = 0.0;
             var = variance / 4;
             keys = generate_keys(array_length,mean,var, dist);
-            initial_keys = generate_keys(array_length/2,mean,var,dist);
-            dist_info = "bimodal," + to_string(mean) + "," + to_string(var);
+            initial_keys = generate_keys(init_length,-1 * end_bimodal,
+                                         end_bimodal,uniform);
+            dist_info = "bimodal2(unif_init)," + to_string(mean) + "," + to_string(var);
         }
         for (int j = 0; j < array_length; j++) {
             keys_csv += dist_info + "," + to_string(array_length) + "," +
@@ -236,8 +242,8 @@ int main(int argc, const char *argv[]) {
             string s = benchmark_from_inputs(keys, ops, 
                               initial_keys, initial_ops,
                               skip_prob, max_height, num_trials,
-                              num_threads, array_length, update_prob, 
-                              removal_prob, dist_info);
+                              num_threads, array_length, init_length, 
+                              update_prob, removal_prob, dist_info);
         if (VERBOSE) {
             cout << s;
         }
@@ -249,7 +255,7 @@ int main(int argc, const char *argv[]) {
     if (logging) {
         ofstream key_file(keys_fn);
         key_file << keys_csv;
-        ofstream ofile("benchmark.csv");
+        ofstream ofile("benchmark_hard.csv");
         ofile << csv_body;
     }
 

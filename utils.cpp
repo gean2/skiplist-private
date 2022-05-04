@@ -140,8 +140,9 @@ vector<int> generate_keys_(int array_length, double mean, double var, Distr dist
         return generate_normal_keys(array_length, mean, var);
     } else if (dist == bimodal) {
         if (isnan(mean2) || isnan(var2)) {
-            double mean1 = mean - (var * double(4));
-            mean2 = mean + (var * double(4));
+            double std = std::sqrt(var);
+            double mean1 = mean - std;
+            mean2 = mean + (var);
             return generate_bimodal_keys(array_length,mean1,var,mean2,var,prob1);
         } else {
             return generate_bimodal_keys(array_length,mean,var,mean2,var2,prob1);
