@@ -48,6 +48,7 @@ float get_option_float(const char *option_name, float default_value) {
  * and calculates the performance using each implementation
 **/
 string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
+                  vector<int> &initial_keys, vector<Oper> &initial_ops,
                   double skip_prob, int max_height, int num_trials,
                   int num_threads, int array_length, double update_prob,
                   double removal_prob, std::string dist_info) {
@@ -66,10 +67,12 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     if (VERBOSE) cout << "running sync list...";
     if(!no_sync) {
         SyncList<int> *sl = new SyncList<int>(max_height, skip_prob);
+        perform_test(sl, initial_keys, initial_ops, array_length/2, num_threads);
         perform_test(sl, keys, ops, array_length, num_threads);
         delete sl;
         for(int i = 0; i < num_trials; i++) {
             sl = new SyncList<int>(max_height, skip_prob);
+            perform_test(sl, initial_keys, initial_ops, array_length/2, num_threads);
             auto compute_start = Clock::now();
             perform_test(sl, keys, ops, array_length, num_threads);
             sync_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -79,10 +82,12 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     }
     if (VERBOSE) cout << "done\n Running FineLockList...";
     FineLockList<int> *fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
+    perform_test(fl, initial_keys, initial_ops, array_length, num_threads);
     perform_test(fl, keys, ops, array_length, num_threads);
     delete fl;
     for(int i = 0; i < num_trials; i++) {
         fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
+        perform_test(fl, initial_keys, initial_ops, array_length/2, num_threads);
         auto compute_start = Clock::now();
         perform_test(fl, keys, ops, array_length, num_threads);
         fine_lock_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -91,10 +96,14 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     fine_lock_time /= num_trials;
     if (VERBOSE) cout << "done\n Running LockFreeList...";
     LockFreeList<int> *lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
+    // warm up cache
+    perform_test(lf, initial_keys, initial_ops, array_length/2, num_threads);
     perform_test(lf, keys, ops, array_length, num_threads);
     delete lf;
     for(int i = 0; i < num_trials; i++) {
         lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
+        // warm up data structure with inserts
+        perform_test(lf, initial_keys, initial_ops, array_length/2, num_threads);
         auto compute_start = Clock::now();
         perform_test(lf, keys, ops, array_length, num_threads);
         lock_free_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -145,7 +154,7 @@ int main(int argc, const char *argv[]) {
         cout << "update_prob=" << update_prob << ", removal_prob=" << removal_prob;
         cout << ", variance=" << variance << ", array_length=";
         string len_as_string = to_string(array_length);
-        for (int k = 0; k < len_as_string.size(); k++) {
+        for (unsigned int k = 0; k < len_as_string.size(); k++) {
             // 8,000,000
             cout << len_as_string[k];
             if ((len_as_string.size() - k) % 3 == 1 && 
@@ -183,6 +192,8 @@ int main(int argc, const char *argv[]) {
     string keys_fn = "keys_logging.csv";
 
     vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
+    vector<Oper> initial_ops(array_length/2, update_op);
+    // all updates at start to warm up data structure
     if (VERBOSE) cout << "generated ops\n";
     for (unsigned int i = 0; i < dists.size(); i++) {
         Distr dist = dists[i];
@@ -192,22 +203,26 @@ int main(int argc, const char *argv[]) {
                  << "\n";
         }
         vector<int> keys;
+        vector<int> initial_keys;
         string dist_info;
         double var = variance;
         if (dist == uniform) {
             int start = -1000;
             int end = 1000;
             keys = generate_keys(array_length,start,end,dist);
+            initial_keys = generate_keys(array_length/2,start,end,dist);
             dist_info = "uniform," + to_string(start) + "," + to_string(end);
             
         } else if (dist == normal) {
             double mean = 0.0;
             keys = generate_keys(array_length,mean,variance,dist);
+            initial_keys = generate_keys(array_length/2,mean,var,dist);
             dist_info = "normal," + to_string(mean) + "," + to_string(var);
         } else if (dist == bimodal) {
             double mean = 0.0;
             var = variance / 4;
             keys = generate_keys(array_length,mean,var, dist);
+            initial_keys = generate_keys(array_length/2,mean,var,dist);
             dist_info = "bimodal," + to_string(mean) + "," + to_string(var);
         }
         for (int j = 0; j < array_length; j++) {
@@ -218,7 +233,9 @@ int main(int argc, const char *argv[]) {
 
         for (unsigned int t = 0; t < thread_opts.size(); t++) {
             int num_threads = thread_opts[t];
-            string s = benchmark_from_inputs(keys, ops, skip_prob, max_height, num_trials,
+            string s = benchmark_from_inputs(keys, ops, 
+                              initial_keys, initial_ops,
+                              skip_prob, max_height, num_trials,
                               num_threads, array_length, update_prob, 
                               removal_prob, dist_info);
         if (VERBOSE) {
