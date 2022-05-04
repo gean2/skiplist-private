@@ -44,8 +44,8 @@ float get_option_float(const char *option_name, float default_value) {
     return default_value;
 }
 
-/* benchmark_from_inputs takes a given set of keys and operations and
- * calculates the performance using each implementation
+/* benchmark_from_inputs takes a given set of keys/operations and input options,
+ * and calculates the performance using each implementation
 **/
 string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
                   double skip_prob, int max_height, int num_trials,
@@ -114,6 +114,14 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     
     return s;
 }
+
+string vary_impl_params(vector<int> &keys, vector<Oper> &ops,
+                  vector<double> skip_prob, int max_height, int num_trials,
+                  int num_threads, int array_length, double update_prob,
+                  double removal_prob, std::string dist_info) {
+    return "";
+}
+
 /*
 int main_diffopers(int argc, const char *argv[]) {
 
@@ -165,7 +173,6 @@ int main(int argc, const char *argv[]) {
     int max_height = get_option_int("-h", 20); // maximum height of skip list
 
     int num_trials = get_option_int("-r", 5);
-    int num_threads = get_option_int("-n", 8);
     int million = 1000000;
     int ten_million = 10000000;
     int ten_k = 10000;
@@ -174,18 +181,39 @@ int main(int argc, const char *argv[]) {
     double update_prob = get_option_float("-i", 0.1f);
     double removal_prob = get_option_float("-d", 0.1f);
     int variance = get_option_float("-v", ten_k);
-
+    string existing_csv(get_option_string("-f",""));
+    string output_fn = "benchmark.csv";
+    vector<int> thread_opts = {1,2,4,8};
+    cout << std::setprecision(4) << std::fixed;
     VERBOSE = (bool)get_option_int("--verbose", 0);
     if (VERBOSE) {
         cout << "running with verbose\n";
+        cout << "update_prob=" << update_prob << ", removal_prob=" << removal_prob;
+        cout << ", variance=" << variance;
+    } else {
+        cout << "running without verbose\n";
     }
 
-    // vector<int> keys = generate_bimodal_keys(array_length, variance);
     vector<Distr> dists = {normal, uniform, bimodal};
-    // for (int i = 0; i < Num_Distrs; )
-    string csv_body = string("dist,dist_param1,dist_param2,sync_time,") +
+
+    string csv_body;
+    if (existing_csv.size() > 0) {
+        int num_lines = 0;
+        string line;
+        std::ifstream file(existing_csv);
+        while (std::getline(file,line)) {
+            csv_body += line + "\n";
+            num_lines++;
+        }
+        cout << "Warning: running with existing csv file that has " 
+             << (num_lines - 1) << " entries\n";
+        output_fn = existing_csv;
+    } else {
+        string csv_body = string("dist,dist_param1,dist_param2,sync_time,") +
                       string("fine_lock_time,lock_free_time,num_threads,") + 
                       string("update_prob,removal_prob,array_len\n");
+    }
+    
     if (VERBOSE) cout << csv_body;
     vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
     if (VERBOSE) cout << "generated ops\n";
@@ -193,7 +221,7 @@ int main(int argc, const char *argv[]) {
         Distr dist = dists[i];
         if (VERBOSE) {
             cout << i << "/" << dists.size();
-            cout << ", generating keys with distribution " << to_string(dist)
+            cout << ", generating keys with distribution " << to_string_dist(dist)
                  << "\n";
         }
         vector<int> keys;
@@ -215,13 +243,18 @@ int main(int argc, const char *argv[]) {
             dist_info = "bimodal," + to_string(mean) + "," + to_string(var);
         }
         if (VERBOSE) cout << "\tperforming run\n";
-        string s = benchmark_from_inputs(keys, ops, skip_prob, max_height, num_trials,
+        for (unsigned int t = 0; t < thread_opts.size(); t++) {
+            int num_threads = thread_opts[t];
+            string s = benchmark_from_inputs(keys, ops, skip_prob, max_height, num_trials,
                               num_threads, array_length, update_prob, 
                               removal_prob, dist_info);
         if (VERBOSE) {
             cout << s;
         }
         csv_body += s;
+        }
+        
+
     }
     ofstream ofile("benchmark.csv");
     ofile << csv_body;

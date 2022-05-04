@@ -174,7 +174,7 @@ vector<int> generate_keys(int array_length, double mean, double var, Distr dist,
     return keys;
 }
 
-std::string to_string(Distr dist) {
+std::string to_string_dist(Distr dist) {
     if (dist == uniform) {
         return "uniform";
     } else if (dist == normal) {
