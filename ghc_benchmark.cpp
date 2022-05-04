@@ -144,7 +144,7 @@ int main(int argc, const char *argv[]) {
     double removal_prob = get_option_float("-d", 0.1f);
     int variance = get_option_float("-v", ten_k);
     string existing_csv(get_option_string("-f",""));
-    string output_fn = "benchmark.csv";
+    string output_fn = "ghc_benchmark.csv";
     vector<int> thread_opts = {1,2,4,8};
     cout << std::setprecision(4) << std::fixed;
     bool logging = (bool)get_option_int("--logging", 1);
