@@ -82,7 +82,7 @@ string benchmark_from_inputs(vector<int> &keys, vector<Oper> &ops,
     }
     if (VERBOSE) cout << "done\n Running FineLockList...";
     FineLockList<int> *fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
-    perform_test(fl, initial_keys, initial_ops, array_length, num_threads);
+    perform_test(fl, initial_keys, initial_ops, array_length/2, num_threads);
     perform_test(fl, keys, ops, array_length, num_threads);
     delete fl;
     for(int i = 0; i < num_trials; i++) {

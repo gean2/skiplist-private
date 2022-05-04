@@ -70,7 +70,7 @@ vector<int> generate_bimodal_keys(int array_length,
     return v;
 }
 
-double count_repeats(vector<int> vec) {
+double count_repeats(vector<int> &vec) {
     // int repeat, total = 0;
     if (VERBOSE) {
         std::cout << "frequencies (k: count):\n";
@@ -117,6 +117,7 @@ vector<Oper> generate_ops(int array_length, double p_update, double p_remove) {
 
 void perform_test(SkipList<int> *l, std::vector<int> &keys, std::vector<Oper> &ops, 
                     int array_length, int num_threads) {
+    assert(keys.size() == ops.size() && keys.size() == array_length);
     #pragma omp parallel for default(shared) schedule(dynamic) num_threads(num_threads)
     for(int i = 0; i < array_length; i++) {
         int *val;
