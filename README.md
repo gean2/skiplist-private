@@ -1,6 +1,6 @@
 # skiplist public readme
 15-418/618 Final Project: Concurrent Skip Lists
-
+Our full writeup and code can be found [here](https://github.com/gean2/parallel-cnn/edit/main/README.md).
 
 ## Project Proposal
 
