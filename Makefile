@@ -1,6 +1,6 @@
 # taken from assignment 2
 EXECUTABLE := benchmark
-FILES   := benchmark test analysis
+FILES   := benchmark test analysis ghc_benchmark
 LOGS	   := logs
 
 all: $(FILES)
@@ -22,7 +22,7 @@ FRAMEWORKS :=
 LDLIBS  := $(addprefix -l, $(LIBS))
 LDFRAMEWORKS := $(addprefix -framework , $(FRAMEWORKS))
 
-OBJS= $(OBJDIR)/benchmark.o $(OBJDIR)/utils.o $(OBJDIR)/test.o $(OBJDIR)/analysis.o 
+OBJS= $(OBJDIR)/benchmark.o $(OBJDIR)/utils.o $(OBJDIR)/test.o $(OBJDIR)/analysis.o $(OBJDIR)/ghc_benchmark.o 
 
 .PHONY: dirs clean
 
@@ -46,6 +46,10 @@ test: dirs $(OBJS)
 
 analysis: dirs $(OBJS)
 		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/analysis.o $(OBJDIR)/utils.o  $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
+
+ghc_benchmark: dirs $(OBJS)
+		$(CXX) $(CXXFLAGS) -o $@ $(OBJDIR)/ghc_benchmark.o $(OBJDIR)/utils.o  $(LDFLAGS) $(LDLIBS) $(LDFRAMEWORKS)
+
 
 $(OBJDIR)/%.o: %.cpp
 		$(CXX) $< $(CXXFLAGS) -c -o $@

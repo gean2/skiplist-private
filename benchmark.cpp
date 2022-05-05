@@ -58,11 +58,20 @@ int main(int argc, const char *argv[]) {
 
     // compute inputs
     std::vector<int> keys;
-    if(dist) keys = generate_normal_keys(array_length, variance);
-    else keys = generate_uniform_keys(array_length, variance);
-    std::vector<int> ops = generate_ops(array_length, update_prob, removal_prob);
+    std::vector<int> initial_keys;
+    if(dist) {
+        keys = generate_normal_keys(array_length, 0.0, variance);
+        initial_keys = generate_normal_keys(array_length/2, 0.0, variance);
+    } else {
+        keys = generate_uniform_keys(array_length, -1 * variance, variance);
+        initial_keys = generate_uniform_keys(array_length/2, -1 * variance,
+                                             variance);
+    }
+    std::vector<Oper> ops = generate_ops(array_length, update_prob, removal_prob);
+    std::vector<Oper> initial_ops(array_length/2, update_op);
+    // all updates at start to warm up data structure
 
-    int max_deletions = std::count(ops.begin(), ops.end(), 2);
+    int max_deletions = std::count(ops.begin(), ops.end(), 1);
 
     // perform test
     double sync_time = 0;
@@ -71,10 +80,12 @@ int main(int argc, const char *argv[]) {
 
     if(!no_sync) {
         SyncList<int> *sl = new SyncList<int>(max_height, skip_prob);
+        perform_test(sl, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
         perform_test(sl, keys, ops, array_length, num_threads);
         delete sl;
         for(int i = 0; i < num_trials; i++) {
             sl = new SyncList<int>(max_height, skip_prob);
+            perform_test(sl, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
             auto compute_start = Clock::now();
             perform_test(sl, keys, ops, array_length, num_threads);
             sync_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -84,10 +95,12 @@ int main(int argc, const char *argv[]) {
     }
 
     FineLockList<int> *fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
+    perform_test(fl, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
     perform_test(fl, keys, ops, array_length, num_threads);
     delete fl;
     for(int i = 0; i < num_trials; i++) {
         fl = new FineLockList<int>(max_height, skip_prob, max_deletions);
+        perform_test(fl, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
         auto compute_start = Clock::now();
         perform_test(fl, keys, ops, array_length, num_threads);
         fine_lock_time += duration_cast<dsec>(Clock::now() - compute_start).count();
@@ -96,10 +109,12 @@ int main(int argc, const char *argv[]) {
     fine_lock_time /= num_trials;
 
     LockFreeList<int> *lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
+    perform_test(lf, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
     perform_test(lf, keys, ops, array_length, num_threads);
     delete lf;
     for(int i = 0; i < num_trials; i++) {
         lf = new LockFreeList<int>(max_height, skip_prob, max_deletions);
+        perform_test(lf, initial_keys, initial_ops, array_length/2, num_threads); // add initial elements
         auto compute_start = Clock::now();
         perform_test(lf, keys, ops, array_length, num_threads);
         lock_free_time += duration_cast<dsec>(Clock::now() - compute_start).count();
